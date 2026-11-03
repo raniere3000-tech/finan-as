@@ -726,7 +726,7 @@ function parseValue(v, colMode){
 }
 function parseParc(p, desc){
   let src=p;
-  if((src===undefined||src===null||src==="") && desc){ const m=String(desc).match(/parcela\s+(\d+\s*(?:\/|de)\s*\d+)/i); if(m) src=m[1]; }
+  if((src===undefined||src===null||src==="") && desc){ const m=String(desc).match(/parcela\s+(\d+\s*(?:\/|de)\s*\d+)/i) || String(desc).match(/\s-\s*(\d{1,2}\s*\/\s*\d{1,2})\s*$/); if(m) src=m[1]; }
   if(src instanceof Date) return {n:src.getDate(),N:src.getMonth()+1};
   if(typeof src==="number"){ if(src>20000&&src<80000){const d=serialToDate(src);return {n:d.getDate(),N:d.getMonth()+1};} return {n:1,N:1}; }
   let t=unmoji(String(src??"")).trim().toLowerCase().replace(/\s+de\s+/," / ").replace(/\s/g,"");
@@ -785,10 +785,13 @@ function parseRows(rows, cfg, colMode, fileName, regras){
 }
 function linesToRows(text){ return text.replace(/\r/g,"").split("\n").filter(l=>l.trim()!=="").map(l=>splitLine(l,detectSep(l))); }
 function monthIndex(d){ return d.getFullYear()*12+d.getMonth(); }
+// vencimento no nome do arquivo (ex.: Fatura_2026-10-10.csv, Nubank_2026-10-18.csv)
+function fileVenc(nome){ const m=String(nome).split("/").pop().match(/(20\d{2})[-_.](\d{2})[-_.](\d{2})(?!\d)/); if(!m) return null; const d=new Date(+m[1],+m[2]-1,+m[3]); return (d.getMonth()===+m[2]-1 && d.getDate()===+m[3])? d : null; }
 function computeMonths(items, cardCfg){
   for(const it of items){
     const c=cardCfg[it.cardKey]||{}; const f=+c.fech||0, v=+c.venc||0;
-    it.m=monthIndex(it.date)+(it.parcData==="S"? it.n-1 : 0)+(f && it.date.getDate()>=f ? 1:0)+(f && v && v<f ? 1:0); it.mEnd=it.m;
+    // fatura com vencimento conhecido (data no nome do arquivo): tudo dela conta no mês do vencimento
+    it.m= it.mFat!=null? it.mFat : monthIndex(it.date)+(it.parcData==="S"? it.n-1 : 0)+(f && it.date.getDate()>=f ? 1:0)+(f && v && v<f ? 1:0); it.mEnd=it.m;
   }
   const key=it=> it.cardKey+"|"+(it.parcData==="S"? +it.date+"|"+it.desc : it.desc.replace(/\s*-?\s*parcela.*$/i,""))+"|"+it.N+"|"+it.val;
   const byKey={}; for(const it of items){ if(it.N>1 && !it.ign){ (byKey[key(it)]=byKey[key(it)]||[]).push(it); } }
@@ -796,7 +799,7 @@ function computeMonths(items, cardCfg){
   return items;
 }
 function merchant(desc){
-  let s=String(desc).toUpperCase().replace(/\s*-?\s*PARCELA\s+\d+\s*(\/|DE)\s*\d+.*$/,"").replace(/\s*-\s*NUPAY\b/,"").replace(/^DL\*/,"").replace(/^(MP|EBN|PG|PAG|IFD|JIM\.COM)\s*\*\s*/,"");
+  let s=String(desc).toUpperCase().replace(/\s*-?\s*PARCELA\s+\d+\s*(\/|DE)\s*\d+.*$/,"").replace(/\s-\s*\d{1,2}\s*\/\s*\d{1,2}\s*$/,"").replace(/\s*-\s*NUPAY\b/,"").replace(/^DL\*/,"").replace(/^(MP|EBN|PG|PAG|IFD|JIM\.COM)\s*\*\s*/,"");
   s=s.replace(/\*.*$/,"").replace(/\s+\d[\d\s]*$/,"").replace(/\s{2,}/g," ").trim();
   if(/^UBER\b/.test(s)||/99\s*(RIDE|APP|POP)/.test(s)) return /EATS/.test(s)?"UBER EATS":(/99/.test(s)?"99":"UBER");
   return s||String(desc).toUpperCase();

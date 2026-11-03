@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="1.4";
+const VERSAO="1.5";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -93,7 +93,7 @@ async function useDir(h){
   try{ const fh=await h.getFileHandle(JSON_NAME); const data=JSON.parse(await (await fh.getFile()).text()); if(data&&data.versao){ state=Object.assign(blank(),data); state.seed=false; loaded=true; } }catch(e){}
   if(!loaded){ // pasta nova: leva junto o que você já configurou neste navegador (sem as faturas de exemplo)
     const keep=state; state=blank();
-    if(keep && !keep.seed){ ["cartoes","manuais","regras","extras","metas","edicoes","cfg"].forEach(k=>{ if(keep[k]) state[k]=keep[k]; }); } }
+    if(keep && !keep.seed){ ["cartoes","manuais","regras","extras","metas","edicoes","cfg","arqFinal"].forEach(k=>{ if(keep[k]) state[k]=keep[k]; }); } }
   state.pasta=h.name; applyCfg();
   await scanFolder(true);
   await loadEnd();
@@ -243,8 +243,8 @@ function build(){
   for(const f of state.arquivos){
     if(f.erro){ INFO.push({nome:f.nome,erro:f.erro,origem:f.origem}); continue; }
     const p=parseRows(f.colMode? f.rows : linesToRows(f.text||""), cfg, f.colMode, f.nome, state.regras);
-    const seen={};
-    p.items.forEach(it=>{ const base=[it.cardKey,isoD(it.date),it.desc,it.val,it.n+"/"+it.N].join("|"); seen[base]=(seen[base]||0)+1; it.id=base+"#"+seen[base]; it.kind="cartao"; it.tipo="Saída";
+    const seen={}, fv=fileVenc(f.nome);
+    p.items.forEach(it=>{ if(fv) it.mFat=monthIndex(fv); const base=[it.cardKey,isoD(it.date),it.desc,it.val,it.n+"/"+it.N].join("|"); seen[base]=(seen[base]||0)+1; it.id=base+"#"+seen[base]; it.kind="cartao"; it.tipo="Saída";
       // fatura sem número do cartão: usa o final que você informou para este arquivo
       const af=(state.arqFinal||{})[f.nome]; if(!it.fin && af){ it.fin=af; it.cardKey=it.bank+"|"+af; } });
     items=items.concat(p.items); INFO.push({nome:f.nome,p,origem:f.origem});

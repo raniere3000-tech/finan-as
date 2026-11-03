@@ -34,6 +34,8 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     }, fx);
     ok(r.arquivos === 2, `${nome}: leu as 2 faturas (${r.arquivos})`);
     ok(r.compras === 8 && r.pagamentos === 2, `${nome}: 8 compras e 2 pagamentos ignorados (${r.compras}/${r.pagamentos})`);
+    const nucleo = await page.evaluate(() => ({ pix: parseParc("", "Pix no Crédito - Fulano - 11/12").N, venc: fileVenc("Fatura_2026-10-10.csv") ? fmtM(monthIndex(fileVenc("Fatura_2026-10-10.csv"))) : "", nubank: ITEMS.filter(i => i.file === "Nubank_2026-10-18.csv").every(i => fmtM(i.m) === "out/26") }));
+    ok(nucleo.pix === 12 && nucleo.venc === "out/26" && nucleo.nubank, `${nome}: parcela "- 11/12" e mês pelo vencimento do nome do arquivo (${JSON.stringify(nucleo)})`);
     ok(r.estornos === 2, `${nome}: compra estornada e o estorno ficaram zerados (${r.estornos})`);
     ok(r.uber === "Uber / 99", `${nome}: categorizou Uber como "Uber / 99" (${r.uber})`);
     ok(r.json, `${nome}: gravou leitor-faturas-dados.json na pasta`);
