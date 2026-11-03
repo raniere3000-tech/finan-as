@@ -257,6 +257,8 @@ button.r1 .go::after{content:" ›"}
 .tbadge{position:absolute;top:-6px;right:-9px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--out);color:#fff;font-size:.65rem;font-weight:700;display:grid;place-items:center;line-height:1}
 .alertbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;border-radius:14px;padding:11px 14px;background:#fdf3d8;border:1px solid #f1dfa6;color:#7a5200;font-size:.9rem}
 .alertbar b{color:#5e3f00}
+.estbar{background:#eaf3fb;border-color:#cfe2f3;color:#2a5a85;margin-top:8px} .estbar b{color:#1d4469}
+.tag.est{background:#eaf3fb;color:#2a5a85;white-space:nowrap} .sheet button.sm{font-size:.75rem;padding:3px 8px;white-space:nowrap}
 .alertbar .acts{display:flex;gap:6px}
 .alertbar button{font:inherit;font-size:.85rem;font-weight:700;border-radius:9px;padding:6px 12px}
 input.need{border-color:#e0a526!important;background:#fff8e6!important;box-shadow:0 0 0 3px rgba(224,165,38,.18)}
@@ -446,6 +448,7 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
   </div>
   <div id="banner" class="banner" hidden></div>
   <div id="alertBar" class="alertbar" role="status" hidden></div>
+  <div id="estBar" class="alertbar estbar" role="status" hidden></div>
 
   <!-- RESUMO -->
   <section class="view" id="v-resumo" hidden>
@@ -509,7 +512,7 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
       </div>
     </div>
     <div class="panel">
-      <header><h2>Compras da fatura</h2><div class="txhead"><button type="button" class="chip" id="cAll" aria-pressed="true">Todas</button><button type="button" class="chip rev" id="cRev" aria-pressed="false">A revisar <span class="num" id="cRevN">0</span></button><input id="cQ" type="search" placeholder="Buscar" aria-label="Buscar compra" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:9px"></div></header>
+      <header><h2>Compras da fatura</h2><div class="txhead"><button type="button" class="chip" id="cAll" aria-pressed="true">Todas</button><button type="button" class="chip rev" id="cRev" aria-pressed="false">A revisar <span class="num" id="cRevN">0</span></button><button type="button" class="chip" id="cEst" aria-pressed="false" hidden>Estornos <span class="num" id="cEstN">0</span></button><input id="cQ" type="search" placeholder="Buscar" aria-label="Buscar compra" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:9px"></div></header>
       <p class="small muted" style="margin:0" id="cLearnTip">Corrigiu uma categoria? O leitor aprende com a loja e passa a classificar as próximas compras sozinho. Bolinha <span class="dot learn"></span> = aprendido com você, <span class="dot warn"></span> = palpite ou sem regra: confira e toque em ✓. Não é você quem paga? Desmarque <b>Eu pago</b>. Paga só uma parte? Toque no valor e digite a sua parte. Cartão inteiro de outra pessoa: em Dados › Cartões, mude “Quem paga”.</p>
       <div class="sheet"><table><thead><tr><th class="stk">Descrição</th><th class="r">Valor (R$)</th><th>Categoria › subcategoria</th><th title="Desmarque se não é você quem paga">Eu pago</th><th>Data</th><th>Cartão</th><th>Parcela</th></tr></thead><tbody id="cTx"></tbody></table></div>
     </div>
@@ -766,6 +769,37 @@ function merchant(desc){
   s=s.replace(/\*.*$/,"").replace(/\s+\d[\d\s]*$/,"").replace(/\s{2,}/g," ").trim();
   if(/^UBER\b/.test(s)||/99\s*(RIDE|APP|POP)/.test(s)) return /EATS/.test(s)?"UBER EATS":(/99/.test(s)?"99":"UBER");
   return s||String(desc).toUpperCase();
+}
+// ---- estornos: junta cada crédito (valor negativo) com a compra que ele devolve ----
+// Total (mesmo valor, ou a soma das parcelas da mesma loja): compra e estorno ficam zerados (est="total").
+// Parcial: o crédito fica no mesmo mês e categoria da compra, para abater dela (est="parcial").
+// Sem compra encontrada: continua abatendo, marcado est="sem".
+function estNorm(d){ return String(d).replace(/["“”()]/g," ").replace(/^\s*(revers[aã]o\s+(do|de)\s+)?(estorno|cr[eé]dito\s+de\s+confian[cç]a|devolu[cç][aã]o|cancelamento|reembolso|chargeback)(\s+(de|do|da))?(\s+compra)?\s*/i,"").trim(); }
+function estSim(a,b){ const A=toks(estNorm(a)), B=toks(estNorm(b)); for(const t of A) if(B.has(t)) return true; return merchant(estNorm(a))===merchant(estNorm(b)); }
+function matchEstornos(items){
+  const DAY=864e5, cents=v=>Math.round(Math.abs(v)*100), used=new Set();
+  const pool=items.filter(i=>i.kind==="cartao" && !i.ign && !i.naoEst && i.val0);
+  const near=(c,p)=> c!==p && !used.has(p) && p.bank===c.bank && p.val0>0 && (p.date-c.date)<=10*DAY && (c.date-p.date)<=200*DAY && estSim(c.desc,p.desc);
+  const mark=(c,ps,kind)=>{ const g="est:"+c.id; [c].concat(ps).forEach(i=>{ used.add(i); i.est=kind; i.estGrp=g; i.estPar=(i===c? ps[0] : c); if(kind==="total") i.ign=true; }); };
+  const byDist=c=>(a,b)=>Math.abs(a.date-c.date)-Math.abs(b.date-c.date);
+  // 1) "Reversão do crédito de confiança" (+) desfaz o "Crédito de confiança" (−) de mesmo valor
+  for(const r of pool.filter(i=>i.val0>0 && /revers/i.test(i.desc))){
+    const c=pool.filter(i=>!used.has(i) && i.val0<0 && i.bank===r.bank && cents(i.val0)===cents(r.val0) && /confian/i.test(i.desc) && i.date<=r.date && estSim(i.desc,r.desc)).sort(byDist(r))[0];
+    if(c) mark(c,[r],"total");
+  }
+  // 2) demais créditos contra compras
+  const creds=pool.filter(i=>i.val0<0 && !used.has(i) && !/pagamento/i.test(i.desc)).sort((a,b)=>cents(b.val0)-cents(a.val0));
+  for(const c of creds){
+    const cand=pool.filter(p=>near(c,p) && !/revers/i.test(p.desc)).sort(byDist(c));
+    const same=cand.find(p=>cents(p.val0)===cents(c.val0));
+    if(same){ mark(c,[same],"total"); continue; }
+    if(cand.length>1){ const mm=merchant(cand[0].desc), grp=cand.filter(p=>merchant(p.desc)===mm);
+      if(grp.length>1 && grp.reduce((s,p)=>s+cents(p.val0),0)===cents(c.val0)){ mark(c,grp,"total"); continue; } }
+    const big=cand.find(p=>cents(p.val0)>cents(c.val0));
+    if(big){ used.add(c); c.est="parcial"; c.estPar=big; if(!c.catEd){ c.cat=big.cat; c.sub=big.sub; } if(!c.mesEd){ c.m=big.m; c.mEnd=big.m; } continue; }
+    c.est="sem";
+  }
+  return items;
 }
 /*CORE-END*/
 /*PDF-PLACEHOLDER*/

@@ -15,11 +15,11 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="1.2";
+const VERSAO="1.3";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
-let revMode=false, catTouched=false, tab="resumo", selMonth=null, selCards=null, selCat=null, editingId=null, lTipo="Saída";
+let revMode=false, estMode=false, catTouched=false, tab="resumo", selMonth=null, selCards=null, selCat=null, editingId=null, lTipo="Saída";
 // subcategorias novas (pesquisa + as que você criar), mudanças de categoria e ocultas
 function defaultExtras(){ return {subs:[
   {nome:"Aluguel",cat:"HABITAÇÃO",grp:"nec",kw:["ALUGUEL"]},
@@ -258,9 +258,12 @@ function build(){
   computeMonths(items, state.cartoes);
   items.forEach(it=>{ it.val0=it.val; const e=state.edicoes[it.id]; if(!e) return;
     if(e.cat){ it.cat=e.cat; it.sub=e.sub||""; } if(e.ign!=null) it.ign=!!e.ign; if(e.desc) it.desc=e.desc; if(e.val!=null&&e.val!=="") it.val=+e.val;
-    if(e.mes!=null&&e.mes!==""){ const sp=it.mEnd-it.m; it.m=+e.mes; it.mEnd=it.m+sp; } it.edited=true; });
+    if(e.mes!=null&&e.mes!==""){ const sp=it.mEnd-it.m; it.m=+e.mes; it.mEnd=it.m+sp; } it.edited=true;
+    it.catEd=!!e.cat; it.mesEd=e.mes!=null&&e.mes!==""; it.naoEst=!!e.naoEst; });
   // cartão pago por outra pessoa: nada dele entra na sua conta
   items.forEach(it=>{ const c=it.kind==="cartao" && state.cartoes[it.cardKey]; if(c && c.terceiro && !it.ign){ it.ign=true; it.terc=true; } });
+  // estornos: compra devolvida e o estorno ficam zerados
+  matchEstornos(items);
   ITEMS=items;
 }
 const inM=(i,m)=>!i.ign && i.m<=m && i.mEnd>=m;
@@ -339,7 +342,7 @@ function render(){
   $("monthbar").hidden = tab==="pasta"||tab==="dados";
   if(state.seed && !$("banner").dataset.seen){ $("banner").dataset.seen="1"; showBanner("Mostrando os dados de exemplo. Clique em <b>Conectar pasta</b> para usar as suas faturas.","info"); }
   ({resumo:rResumo,cartoes:rCartoes,analise:rAnalise,lancamentos:rLanc,pasta:rPasta,dados:()=>{ rDados(); rPasta(); }})[tab]();
-  alerts();
+  alerts(); estAviso();
   updateCover();
 }
 function updateCover(){
@@ -575,16 +578,26 @@ function rCartoes(){
   const q=$("cQ").value.trim().toLowerCase();
   const base=ITEMS.filter(i=>i.kind==="cartao"&&selCards.has(i.cardKey)&&(i.ign? i.m===m : inM(i,m)));
   const nRev=base.filter(needsReview).length; $("cRevN").textContent=nRev; if(revMode&&!nRev) revMode=false;
-  $("cAll").setAttribute("aria-pressed",!revMode); $("cRev").setAttribute("aria-pressed",revMode);
-  const all=base.filter(i=>!revMode||needsReview(i)).filter(i=>!q||i.desc.toLowerCase().includes(q)).sort((a,b)=>a.date-b.date);
-  $("cTx").innerHTML=all.map(i=>{ const proj=i.m<m, payIgn=i.ign && !i.terc && !(state.edicoes[i.id]&&state.edicoes[i.id].ign);
+  const nEst=base.filter(i=>i.est).length; $("cEstN").textContent=nEst; $("cEst").hidden=!nEst; if(estMode&&!nEst) estMode=false;
+  $("cAll").setAttribute("aria-pressed",!revMode&&!estMode); $("cRev").setAttribute("aria-pressed",revMode); $("cEst").setAttribute("aria-pressed",estMode);
+  const all=base.filter(i=>!revMode||needsReview(i)).filter(i=>!estMode||i.est).filter(i=>!q||i.desc.toLowerCase().includes(q)).sort((a,b)=>a.date-b.date);
+  $("cTx").innerHTML=all.map(i=>{ const proj=i.m<m, payIgn=i.ign && !i.terc && i.est!=="total" && !(state.edicoes[i.id]&&state.edicoes[i.id].ign);
+    const par=i.estPar? `${esc(i.estPar.desc)} (${fmtD(i.estPar.date)}, ${BRL.format(Math.abs(i.estPar.val0))})` : "";
+    const estTag= i.est==="total"? `<span class="tag est" title="${i.val0<0?"Devolve: ":"Devolvida por: "}${par}">↩ ${i.val0<0?"estorno":"estornada"}: zerado</span>`
+      : i.est==="parcial"? `<span class="tag est" title="Abate de: ${par}">↩ estorno parcial</span>`
+      : i.est==="sem"? `<span class="tag est" title="Não achei a compra devolvida nas faturas da pasta. O valor continua abatendo os gastos.">↩ estorno sem compra</span>` : "";
+    const naoEst= i.est? `<button type="button" class="ghost sm" data-ne="${esc(i.id)}" title="Não é estorno: contar normalmente">Não é estorno</button>` : (state.edicoes[i.id]&&state.edicoes[i.id].naoEst)? `<button type="button" class="ghost sm" data-se="${esc(i.id)}" title="Voltar a procurar o estorno desta compra">É estorno</button>` : "";
     const dot= i.ign? "" : i.edited? '<span class="dot info" title="alterado por você"></span>' : i.how==="regra"? `<span class="dot learn" title="aprendido: contém “${esc(i.rk)}”"></span>` : (i.how==="palpite"||i.how==="padrao")? `<span class="dot warn" title="${i.how==="palpite"?"palpite por lojas parecidas":"sem regra"}"></span>` : "";
     return `<tr class="${i.ign?"ign":proj?"proj":""}"><td class="stk"><div class="dsc" title="${esc(i.desc)}">${dot}<span class="t">${esc(i.desc)}</span></div></td>
     <td class="v">${i.ign? fmtNum(i.val) : `<input class="num${i.val!==i.val0?" part":""}" data-v="${esc(i.id)}" inputmode="decimal" value="${fmtNum(i.val)}" title="${i.val!==i.val0?`Sua parte. Valor na fatura: ${fmtNum(i.val0)}`:"Toque para mudar o valor (ex.: só a sua parte)"}" aria-label="Valor que você paga">`}</td>
-    <td>${i.terc?'<span class="sm">cartão de outra pessoa</span>':payIgn?'<span class="sm">pagamento da fatura</span>':`<div class="cs">${catSubSelect(i)}${needsReview(i)?`<button type="button" class="okb" data-ok="${esc(i.id)}" title="A categoria está certa: guardar como regra" aria-label="Confirmar categoria">✓</button>`:""}</div>`}</td>
-    <td class="ck"><input type="checkbox" data-ck="${esc(i.id)}" ${i.ign?"":"checked"} ${payIgn||i.terc?"disabled":""} aria-label="Eu pago esta compra"></td>
-    <td class="sm num">${fmtD(i.date)}</td><td class="sm" title="${esc(i.file||"")}">${esc(cardName(i.cardKey))}${i.cardKey.endsWith("|")&&i.file?` <span class="fn">· ${esc(fileLabel(i.file))}</span>`:""}</td><td class="sm num">${i.N>1?(i.n+(m-i.m))+"/"+i.N:"—"}</td></tr>`; }).join("")||`<tr><td colspan="7" class="empty">${revMode?"Nada para revisar.":"Nenhuma compra para os cartões escolhidos neste mês."}</td></tr>`;
+    <td>${i.terc?'<span class="sm">cartão de outra pessoa</span>':payIgn?'<span class="sm">pagamento da fatura</span>':i.est==="total"?`<div class="cs">${estTag}${naoEst}</div>`:`<div class="cs">${estTag}${catSubSelect(i)}${naoEst}${needsReview(i)?`<button type="button" class="okb" data-ok="${esc(i.id)}" title="A categoria está certa: guardar como regra" aria-label="Confirmar categoria">✓</button>`:""}</div>`}</td>
+    <td class="ck"><input type="checkbox" data-ck="${esc(i.id)}" ${i.ign?"":"checked"} ${payIgn||i.terc||i.est==="total"?"disabled":""} aria-label="Eu pago esta compra"></td>
+    <td class="sm num">${fmtD(i.date)}</td><td class="sm" title="${esc(i.file||"")}">${esc(cardName(i.cardKey))}${i.cardKey.endsWith("|")&&i.file?` <span class="fn">· ${esc(fileLabel(i.file))}</span>`:""}</td><td class="sm num">${i.N>1?(i.n+(m-i.m))+"/"+i.N:"—"}</td></tr>`; }).join("")||`<tr><td colspan="7" class="empty">${revMode?"Nada para revisar.":estMode?"Nenhum estorno.":"Nenhuma compra para os cartões escolhidos neste mês."}</td></tr>`;
   bindCatSelects($("cTx"));
+  $("cTx").querySelectorAll("[data-ne],[data-se]").forEach(b=>b.onclick=()=>{ const id=b.dataset.ne||b.dataset.se, it=ITEMS.find(x=>x.id===id); if(!it) return;
+    const ids=b.dataset.ne? ITEMS.filter(x=>x.estGrp&&x.estGrp===it.estGrp).map(x=>x.id) : [id]; if(!ids.length) ids.push(id);
+    ids.forEach(k=>{ state.edicoes[k]=state.edicoes[k]||{}; if(b.dataset.ne) state.edicoes[k].naoEst=true; else delete state.edicoes[k].naoEst; });
+    save(); render(); toast(b.dataset.ne? "Ok, não é estorno: voltou a contar normalmente." : "Vou procurar o estorno desta compra de novo.",[{label:"Desfazer",run:()=>{ ids.forEach(k=>{ const e=state.edicoes[k]; if(!e) return; if(b.dataset.ne) delete e.naoEst; else e.naoEst=true; }); save(); render(); }}]); });
   $("cTx").querySelectorAll("[data-v]").forEach(inp=>inp.onchange=()=>{ const id=inp.dataset.v, it=ITEMS.find(x=>x.id===id); if(!it) return; const v=parseValue(inp.value,false);
     if(isNaN(v)||v<0){ inp.value=fmtNum(it.val); return; }
     state.edicoes[id]=state.edicoes[id]||{}; if(Math.abs(v-it.val0)<0.005) delete state.edicoes[id].val; else state.edicoes[id].val=Math.round(v*100)/100;
@@ -593,8 +606,22 @@ function rCartoes(){
   $("cTx").querySelectorAll("[data-ck]").forEach(c=>c.onchange=()=>{ const id=c.dataset.ck; if(!c.checked){ state.edicoes[id]=Object.assign(state.edicoes[id]||{},{ign:true}); toast("Compra removida da sua conta: não é paga por você.",[{label:"Desfazer",run:()=>{ delete state.edicoes[id].ign; save(); render(); }}]); } else if(state.edicoes[id]) delete state.edicoes[id].ign; save(); render(); });
 }
 $("cQ").oninput=()=>rCartoes();
-$("cAll").onclick=()=>{ revMode=false; rCartoes(); };
-$("cRev").onclick=()=>{ revMode=true; rCartoes(); };
+$("cAll").onclick=()=>{ revMode=false; estMode=false; rCartoes(); };
+$("cRev").onclick=()=>{ revMode=true; estMode=false; rCartoes(); };
+$("cEst").onclick=()=>{ estMode=true; revMode=false; rCartoes(); };
+// aviso de estornos do mês (Resumo e Cartões)
+function estAviso(){
+  const bar=$("estBar"), m=selMonth;
+  const list=ITEMS.filter(i=>i.est && i.val0<0 && i.m===m);
+  if(!list.length || (tab!=="resumo"&&tab!=="cartoes")){ bar.hidden=true; return; }
+  const tot=list.filter(i=>i.est==="total" && !(i.estPar && /revers/i.test(i.estPar.desc))), par=list.filter(i=>i.est==="parcial"), sem=list.filter(i=>i.est==="sem");
+  const parts=[];
+  if(tot.length) parts.push(`<b>${tot.length===1?"1 compra estornada":tot.length+" compras estornadas"}</b> (${BRL.format(tot.reduce((s,i)=>s-i.val0,0))}): a compra e o estorno foram <b>zerados</b>`);
+  if(par.length) parts.push(`${par.length===1?"1 estorno parcial":par.length+" estornos parciais"} (${BRL.format(par.reduce((s,i)=>s-i.val0,0))}) abatendo da compra original`);
+  if(sem.length) parts.push(`${sem.length===1?"1 estorno":sem.length+" estornos"} sem a compra nas faturas da pasta (${BRL.format(sem.reduce((s,i)=>s-i.val0,0))}), abatendo dos gastos`);
+  bar.innerHTML=`<span>↩ <b>Estornos neste mês:</b> ${parts.join("; ")}.</span><span class="acts"><button type="button" class="primary" id="estGo">Ver</button></span>`;
+  bar.hidden=false; $("estGo").onclick=()=>{ estMode=true; revMode=false; selCards=null; go("cartoes"); const pn=$("cTx").closest(".panel"); if(pn) pn.scrollIntoView({behavior:"smooth",block:"start"}); };
+}
 
 function rAnalise(){
   const m=selMonth, cur=ITEMS.filter(i=>inM(i,m)&&isOut(i));
