@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="1.8";
+const VERSAO="1.9";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -55,11 +55,11 @@ function applyCfg(){
 function seedState(){ const s=blank(), sd=EMB.seed||{}; if(!(sd.arquivos||[]).length && !(sd.manuais||[]).length) return s;
   s.arquivos=JSON.parse(JSON.stringify(sd.arquivos||[])); s.manuais=JSON.parse(JSON.stringify(sd.manuais||[])); s.seed=true; return s; }
 function lsGet(){ try{ const v=localStorage.getItem("lf3-state"); return v?JSON.parse(v):null; }catch(e){ return null; } }
-function lsSet(){ try{ localStorage.setItem("lf3-state",JSON.stringify(state)); }catch(e){} }
+function lsSet(txt){ try{ localStorage.setItem("lf3-state",txt||JSON.stringify(state)); return true; }catch(e){ return false; } }
 function hhmm(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
 function setFolder(txt, cls){ $("folderTxt").textContent=txt; $("folderPill").className="pill"+(cls?" "+cls:""); }
 function save(){
-  state.atualizado=new Date().toISOString(); lsSet();
+  state.atualizado=new Date().toISOString(); const lsOk=lsSet();
   if(dirHandle){
     clearTimeout(saveTimer);
     saveTimer=setTimeout(async()=>{
@@ -67,7 +67,7 @@ function save(){
         setFolder(`${dirHandle.name} · salvo às ${hhmm()}`,"ok"); $("saveStatus").textContent=`Dados gravados em ${dirHandle.name}/${JSON_NAME}.`; }
       catch(e){ setFolder("Não consegui gravar o JSON","warn"); }
     },500);
-  } else { $("saveStatus").textContent=`Salvo neste navegador às ${hhmm()}.`; }
+  } else { $("saveStatus").textContent= lsOk? `Salvo neste navegador às ${hhmm()}.` : "Não consegui salvar neste navegador (memória cheia). Em Dados, use Salvar JSON para guardar uma cópia."; }
 }
 let toastTimer=null;
 function toast(html, actions){
@@ -379,7 +379,7 @@ function rResumo(){
   let com=0; for(let x=m+1;x<=ultM;x++) com+=ITEMS.filter(i=>inM(i,x)&&isOut(i)).reduce((s,i)=>s+i.val,0);
   const prox=ITEMS.filter(i=>inM(i,m+1)&&isOut(i)).reduce((s,i)=>s+i.val,0);
   $("kCom").textContent=BRL.format(com);
-  $("kComSub").textContent= com>0? `parcelas até ${fmtMLong(ultM)} · ${fmtMLong(m+1)}: ${BRL.format(prox)}` : "nada comprometido nos próximos meses";
+  $("kComSub").textContent= com>0? `até ${fmtM(ultM)} · ${fmtM(m+1)}: ${BRL.format(prox)}` : "nada comprometido nos próximos meses";
   const cats=group(cur.filter(isOut), i=>i.cat, null, i=>catColor(i.cat));
   $("rCats").innerHTML=catSubBars(cur.filter(isOut), cats, outs);
   $("rCatsTot").textContent=BRL.format(outs);
@@ -448,7 +448,7 @@ function mesesChart(sel){
     if(h>0) s+=`<path d="M${X},${y(0)}V${y(v)+rr}Q${X},${y(v)} ${X+rr},${y(v)}H${X+w-rr}Q${X+w},${y(v)} ${X+w},${y(v)+rr}V${y(0)}Z" fill="${fut?"#e9b8a6":"#b54728"}"${x===sel?' stroke="#1f2a27" stroke-width="1.5"':""}/>`;
     if(k%step===0||x===sel) s+=`<text x="${pl+k*bw+bw/2}" y="${H-pb+16}" text-anchor="middle" font-size="${fs}" fill="${x===sel?"#1f2a27":"#62716b"}" font-weight="${x===sel?700:400}">${fmtM(x)}</text>`; });
   if(avg>0) s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(avg)}" y2="${y(avg)}" stroke="#1f2a27" stroke-width="1.5" stroke-dasharray="5 4"/>`;
-  if(hasIns){ const pts=ms.map((x,k)=>[pl+k*bw+bw/2, y(ins[k]), ins[k]]).filter((p,k)=>ms[k]<=last||ins[k]>0);
+  if(hasIns){ const pts=ms.map((x,k)=>[pl+k*bw+bw/2, y(ins[k]), ins[k]]).filter(p=>p[2]>0);
     s+=`<polyline points="${pts.map(p=>p[0]+","+p[1]).join(" ")}" fill="none" stroke="#1f7a3a" stroke-width="2" stroke-linejoin="round"/>`;
     pts.forEach(p=>{ if(p[2]>0) s+=`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="#1f7a3a" stroke="#fff" stroke-width="2"/>`; }); }
   ms.forEach((x,k)=>{ s+=`<rect class="hit" data-k="${k}" x="${pl+k*bw}" y="${pt}" width="${bw}" height="${ih}"/>`; });
@@ -653,7 +653,9 @@ function rCartoes(){
   const nRev=base.filter(needsReview).length; $("cRevN").textContent=nRev; if(revMode&&!nRev) revMode=false;
   const nEst=base.filter(i=>i.est).length; $("cEstN").textContent=nEst; $("cEst").hidden=!nEst; if(estMode&&!nEst) estMode=false;
   $("cAll").setAttribute("aria-pressed",!revMode&&!estMode); $("cRev").setAttribute("aria-pressed",revMode); $("cEst").setAttribute("aria-pressed",estMode);
-  const all=base.filter(i=>!revMode||needsReview(i)).filter(i=>!estMode||i.est).filter(i=>!q||i.desc.toLowerCase().includes(q)).sort((a,b)=>a.date-b.date);
+  const all0=base.filter(i=>!revMode||needsReview(i)).filter(i=>!estMode||i.est).filter(i=>!q||i.desc.toLowerCase().includes(q)).sort((a,b)=>a.date-b.date);
+  // compras e estornos que se anularam ficam escondidos na lista "Todas" (aparecem no filtro Estornos)
+  const nZer= estMode? 0 : all0.filter(i=>i.est==="total").length, all= nZer? all0.filter(i=>i.est!=="total") : all0;
   $("cTx").innerHTML=all.map(i=>{ const proj=i.m<m, payIgn=i.ign && !i.terc && i.est!=="total" && !(state.edicoes[i.id]&&state.edicoes[i.id].ign);
     const par=i.estPar? `${esc(i.estPar.desc)} (${fmtD(i.estPar.date)}, ${BRL.format(Math.abs(i.estPar.val0))})` : "";
     const estTag= i.est==="total"? `<span class="tag est" title="${i.val0<0?"Devolve: ":"Devolvida por: "}${par}">↩ ${i.val0<0?"estorno":"estornada"}: zerado</span>`
@@ -666,6 +668,8 @@ function rCartoes(){
     <td>${i.terc?'<span class="sm">cartão de outra pessoa</span>':payIgn?'<span class="sm">pagamento da fatura</span>':i.est==="total"?`<div class="cs">${estTag}${naoEst}</div>`:`<div class="cs">${estTag}${catSubSelect(i)}${naoEst}${needsReview(i)?`<button type="button" class="okb" data-ok="${esc(i.id)}" title="A categoria está certa: guardar como regra" aria-label="Confirmar categoria">✓</button>`:""}</div>`}</td>
     <td class="ck"><input type="checkbox" data-ck="${esc(i.id)}" ${i.ign?"":"checked"} ${payIgn||i.terc||i.est==="total"?"disabled":""} aria-label="Eu pago esta compra"></td>
     <td class="sm num">${fmtD(i.date)}</td><td class="sm" title="${esc(i.file||"")}">${esc(cardName(i.cardKey))}${i.cardKey.endsWith("|")&&i.file?` <span class="fn">· ${esc(fileLabel(i.file))}</span>`:""}</td><td class="sm num">${i.N>1?(i.n+(m-i.m))+"/"+i.N:"—"}</td></tr>`; }).join("")||`<tr><td colspan="7" class="empty">${revMode?"Nada para revisar.":estMode?"Nenhum estorno.":"Nenhuma compra para os cartões escolhidos neste mês."}</td></tr>`;
+  if(nZer) $("cTx").insertAdjacentHTML("beforeend",`<tr class="zerinfo"><td colspan="7"><button type="button" class="linkbtn" id="cZerShow">↩ ${nZer} lançamento(s) zerados por estorno escondidos · ver</button></td></tr>`);
+  if($("cZerShow")) $("cZerShow").onclick=()=>{ estMode=true; revMode=false; rCartoes(); };
   bindCatSelects($("cTx"));
   $("cTx").querySelectorAll("[data-ne],[data-se]").forEach(b=>b.onclick=()=>{ const id=b.dataset.ne||b.dataset.se, it=ITEMS.find(x=>x.id===id); if(!it) return;
     const ids=b.dataset.ne? ITEMS.filter(x=>x.estGrp&&x.estGrp===it.estGrp).map(x=>x.id) : [id]; if(!ids.length) ids.push(id);
@@ -724,7 +728,7 @@ function trendSVG(ms, vals, cur, col){
   const bw=(W-pl-pr)/ms.length, ticks=[0,nice/2,nice];
   let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gasto por mês">`;
   ticks.forEach(t=>{ const y=pt+(H-pt-pb)*(1-t/nice); s+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl-6}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="JetBrains Mono, monospace">${Math.round(t).toLocaleString("pt-BR")}</text>`; });
-  ms.forEach((x,i)=>{ const h=(H-pt-pb)*(vals[i]/nice), X=pl+i*bw+bw*0.18, w=bw*0.64, Y=H-pb-h;
+  ms.forEach((x,i)=>{ const h=(H-pt-pb)*(vals[i]/nice), w=Math.min(bw*0.64,56), X=pl+i*bw+(bw-w)/2, Y=H-pb-h;
     s+=`<rect x="${X}" y="${Y}" width="${w}" height="${Math.max(0,h)}" rx="3" fill="${col}" opacity="${x===cur?1:(x>cur?0.35:0.6)}"><title>${fmtMLong(x)}: ${BRL.format(vals[i])}</title></rect>`;
     s+=`<text x="${X+w/2}" y="${H-pb+16}" text-anchor="middle" font-size="11" fill="${x===cur?"var(--ink)":"var(--muted)"}" font-weight="${x===cur?700:400}">${fmtM(x)}</text>`;
     if(x===cur&&vals[i]) s+=`<text x="${X+w/2}" y="${Y-5}" text-anchor="middle" font-size="11" fill="var(--ink)" font-family="JetBrains Mono, monospace">${Math.round(vals[i]).toLocaleString("pt-BR")}</text>`; });
