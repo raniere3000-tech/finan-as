@@ -418,6 +418,18 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
 .catgrp .subs{display:none}
 .catgrp.open .subs{display:block}
 .linkbtn{background:none;border:none;padding:0;color:var(--accent);font-weight:700;font-size:inherit;text-decoration:underline;cursor:pointer}
+details.dica{font-size:.86rem;margin:2px 0 6px}
+details.dica summary{cursor:pointer;color:var(--accent);font-weight:700}
+tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
+@media (max-width:520px){
+  .banner,.alertbar{padding:9px 12px;font-size:.84rem;gap:8px;line-height:1.35}
+  .alertbar button,.banner button{padding:5px 10px;font-size:.8rem}
+  .barrow{grid-template-columns:minmax(0,9.6rem) minmax(0,1fr) 5.6rem;gap:8px}
+  .barrow .tg{width:.8em}
+  .estbar{flex-wrap:nowrap}
+  .alertbar > span:first-child{flex:1;min-width:0}
+  .tile .lab{font-size:.68rem}
+}
 .barrow.sub{font-size:.84rem;padding:3px 6px 3px 24px;color:var(--muted)}
 .barrow.sub .track{height:8px}
 .barrow.sub .nm{color:var(--ink)}
@@ -564,7 +576,7 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
     </div>
     <div class="panel">
       <header><h2>Compras da fatura</h2><div class="txhead"><button type="button" class="chip" id="cAll" aria-pressed="true">Todas</button><button type="button" class="chip rev" id="cRev" aria-pressed="false">A revisar <span class="num" id="cRevN">0</span></button><button type="button" class="chip" id="cEst" aria-pressed="false" hidden>Estornos <span class="num" id="cEstN">0</span></button><input id="cQ" type="search" placeholder="Buscar" aria-label="Buscar compra" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:9px"></div></header>
-      <p class="small muted" style="margin:0" id="cLearnTip">Corrigiu uma categoria? O leitor aprende com a loja e passa a classificar as próximas compras sozinho. Bolinha <span class="dot learn"></span> = aprendido com você, <span class="dot warn"></span> = palpite ou sem regra: confira e toque em ✓. Não é você quem paga? Desmarque <b>Eu pago</b>. Paga só uma parte? Toque no valor e digite a sua parte. Cartão inteiro de outra pessoa: em Dados › Cartões, mude “Quem paga”.</p>
+      <details class="dica"><summary>Como corrigir e ensinar o leitor</summary><p class="small muted" style="margin:6px 0 0" id="cLearnTip">Corrigiu uma categoria? O leitor aprende com a loja e passa a classificar as próximas compras sozinho. Bolinha <span class="dot learn"></span> = aprendido com você, <span class="dot warn"></span> = palpite ou sem regra: confira e toque em ✓. Não é você quem paga? Desmarque <b>Eu pago</b>. Paga só uma parte? Toque no valor e digite a sua parte. Cartão inteiro de outra pessoa: em Dados › Cartões, mude “Quem paga”.</p></details>
       <div class="sheet"><table><thead><tr><th class="stk">Descrição</th><th class="r">Valor (R$)</th><th>Categoria › subcategoria</th><th title="Desmarque se não é você quem paga">Eu pago</th><th>Data</th><th>Cartão</th><th>Parcela</th></tr></thead><tbody id="cTx"></tbody></table></div>
     </div>
   </section>

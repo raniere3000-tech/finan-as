@@ -49,6 +49,8 @@ Em ordem de pedido:
 
 20. **Subcategorias recolhidas (v1.8)** — em "Para onde foi o dinheiro" as subcategorias começam fechadas; tocar na categoria abre/fecha, "Abrir todas" abre tudo. Tocar numa subcategoria leva para a Análise.
 
+21. **Revisão geral (v1.9)** — medido: o app redesenha qualquer aba em menos de 80 ms, então não havia lentidão real. Ajustes: linha de Entradas só nos meses com entrada (antes descia até zero); compras e estornos que se anularam ficam escondidos na lista "Todas" dos Cartões (linha "ver" leva ao filtro Estornos); explicação longa dos Cartões virou "Como corrigir e ensinar o leitor" recolhível; no celular, avisos mais compactos e nomes de categoria com mais espaço; barras da Análise mais finas; aviso quando o navegador não consegue salvar (memória cheia).
+
 ## Ideias que ficaram em aberto
 
 - Mover "Ajustar metas" do Resumo para a aba Dados (sugerido, sem resposta).
