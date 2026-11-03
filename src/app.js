@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="1.9";
+const VERSAO="2.0";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -434,28 +434,30 @@ function mesesChart(sel){
   const outs=ms.map(x=>ITEMS.filter(i=>inM(i,x)&&isOut(i)).reduce((s,i)=>s+i.val,0));
   const ins=ms.map(x=>ITEMS.filter(i=>inM(i,x)&&!isOut(i)).reduce((s,i)=>s+i.val,0));
   const past=ms.map((x,k)=>({x,v:outs[k]})).filter(o=>o.x<=last && o.v>0);
-  const avg=past.length? past.reduce((s,o)=>s+o.v,0)/past.length : 0;
+  const avg=past.length>=2? past.reduce((s,o)=>s+o.v,0)/past.length : 0;   // média só faz sentido com 2+ meses
   const hasIns=ins.some(v=>v>0);
   $("rMesesNote").textContent= lastAll>last? `de ${fmtM(first)} a ${fmtM(lastAll)} · depois de ${fmtM(last)} só o que já está comprometido` : `de ${fmtM(first)} a ${fmtM(last)}`;
-  $("rMesesLeg").innerHTML=`<span><i style="background:var(--out)"></i>Gastos</span>${lastAll>last?'<span><i style="background:#e9b8a6"></i>Já comprometido (parcelas)</span>':""}<span><i class="dash"></i>Média de gastos ${BRL.format(avg)}</span>${hasIns?'<span><i class="ln" style="background:var(--in)"></i>Entradas</span>':""}`;
-  const W=Math.max(300, box.clientWidth||760), H=W<520?220:260, pl=W<520?52:60, pr=10, pt=14, pb=30;
-  const max=Math.max(...outs, ...ins, avg, 1), nice=niceMax(max), ih=H-pt-pb, bw=(W-pl-pr)/ms.length;
+  $("rMesesLeg").innerHTML=`${hasIns?'<span><i style="background:#2f8f57"></i>Entradas</span>':""}<span><i style="background:#b54728"></i>Gastos</span>${lastAll>last?'<span><i style="background:#e9b8a6"></i>Já comprometido (parcelas)</span>':""}${avg>0?`<span><i class="dash"></i>Média de gastos ${BRL.format(avg)}</span>`:""}`;
+  const W=Math.max(300, box.clientWidth||760), H=W<520?230:280, pl=W<520?54:60, pr=10, pt=22, pb=30;
+  const max=Math.max(...outs, ...ins, avg, 1), nice=niceMax(max*1.08), ih=H-pt-pb, bw=(W-pl-pr)/ms.length;
   const y=v=>pt+ih*(1-v/nice), fs=W<520?10:11, short=v=>v>=1000? (v/1000).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mil" : Math.round(v).toLocaleString("pt-BR");
-  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Gastos por mês, com média e entradas">`;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Entradas e gastos por mês">`;
+  const kSel=ms.indexOf(sel); if(kSel>=0) s+=`<rect x="${pl+kSel*bw+2}" y="${pt-16}" width="${bw-4}" height="${ih+16}" rx="8" fill="#f1f5f3"/>`;
   [0,nice/2,nice].forEach(t=>{ s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="#e8eeeb"/><text x="${pl-6}" y="${y(t)+4}" text-anchor="end" font-size="${fs}" fill="#62716b" font-family="JetBrains Mono, monospace">${short(t)}</text>`; });
-  const step=Math.ceil(ms.length/(W<520?6:12));
-  ms.forEach((x,k)=>{ const v=outs[k], h=ih*v/nice, w=Math.max(4,Math.min(36,bw*0.6)), X=pl+k*bw+(bw-w)/2, fut=x>last, rr=Math.min(4,w/2,h);
-    if(h>0) s+=`<path d="M${X},${y(0)}V${y(v)+rr}Q${X},${y(v)} ${X+rr},${y(v)}H${X+w-rr}Q${X+w},${y(v)} ${X+w},${y(v)+rr}V${y(0)}Z" fill="${fut?"#e9b8a6":"#b54728"}"${x===sel?' stroke="#1f2a27" stroke-width="1.5"':""}/>`;
-    if(k%step===0||x===sel) s+=`<text x="${pl+k*bw+bw/2}" y="${H-pb+16}" text-anchor="middle" font-size="${fs}" fill="${x===sel?"#1f2a27":"#62716b"}" font-weight="${x===sel?700:400}">${fmtM(x)}</text>`; });
-  if(avg>0) s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(avg)}" y2="${y(avg)}" stroke="#1f2a27" stroke-width="1.5" stroke-dasharray="5 4"/>`;
-  if(hasIns){ const pts=ms.map((x,k)=>[pl+k*bw+bw/2, y(ins[k]), ins[k]]).filter(p=>p[2]>0);
-    s+=`<polyline points="${pts.map(p=>p[0]+","+p[1]).join(" ")}" fill="none" stroke="#1f7a3a" stroke-width="2" stroke-linejoin="round"/>`;
-    pts.forEach(p=>{ if(p[2]>0) s+=`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="#1f7a3a" stroke="#fff" stroke-width="2"/>`; }); }
+  const step=Math.ceil(ms.length/(W<520?6:12)), nb=hasIns?2:1, w=Math.max(4,Math.min(hasIns?26:36,bw*0.72/nb)), gap=hasIns?3:0, lbl=bw>=(hasIns?54:30);
+  const bar=(X,v,fill,stroke)=>{ const h=ih*v/nice, rr=Math.min(4,w/2,h); return h>0? `<path d="M${X},${y(0)}V${y(v)+rr}Q${X},${y(v)} ${X+rr},${y(v)}H${X+w-rr}Q${X+w},${y(v)} ${X+w},${y(v)+rr}V${y(0)}Z" fill="${fill}"${stroke?` stroke="${stroke}" stroke-width="1.5"`:""}/>` : ""; };
+  const val=(X,v,col,bold)=>`<text x="${X+w/2}" y="${y(v)-5}" text-anchor="middle" font-size="${fs-1}" fill="${col}" font-weight="${bold?700:500}" font-family="JetBrains Mono, monospace" stroke="#fff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">${short(v)}</text>`;
+  ms.forEach((x,k)=>{ const fut=x>last, cx=pl+k*bw+bw/2, X0=cx-(nb*w+(nb-1)*gap)/2;
+    let X=X0;
+    if(hasIns){ if(ins[k]>0){ s+=bar(X,ins[k],"#2f8f57"); if(lbl||x===sel) s+=val(X,ins[k],"#1f6b3f",x===sel); } X+=w+gap; }
+    if(outs[k]>0){ s+=bar(X,outs[k],fut?"#e9b8a6":"#b54728"); if(lbl||x===sel) s+=val(X,outs[k],fut?"#a5634c":"#8f3a20",x===sel); }
+    if(k%step===0||x===sel) s+=`<text x="${cx}" y="${H-pb+16}" text-anchor="middle" font-size="${fs}" fill="${x===sel?"#1f2a27":"#62716b"}" font-weight="${x===sel?700:400}">${fmtM(x)}</text>`; });
+  if(avg>0) s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(avg)}" y2="${y(avg)}" stroke="#1f2a27" stroke-width="1.2" stroke-dasharray="5 4" opacity=".7"/><text x="${W-pr}" y="${y(avg)-4}" text-anchor="end" font-size="${fs-1}" fill="#1f2a27">média</text>`;
   ms.forEach((x,k)=>{ s+=`<rect class="hit" data-k="${k}" x="${pl+k*bw}" y="${pt}" width="${bw}" height="${ih}"/>`; });
   box.innerHTML=s+`</svg><div class="mtip" hidden></div>`;
   const tip=box.querySelector(".mtip");
   box.querySelectorAll(".hit").forEach(r=>{ const k=+r.dataset.k, x=ms[k];
-    r.onmouseenter=r.onclick=()=>{ tip.innerHTML=`<b>${fmtMLong(x)}</b>${x>last?' <span class="muted">· comprometido</span>':""}<br>Gastos <span class="num">${BRL.format(outs[k])}</span>${hasIns?`<br>Entradas <span class="num">${BRL.format(ins[k])}</span>`:""}<br>Média <span class="num">${BRL.format(avg)}</span>`;
+    r.onmouseenter=r.onclick=()=>{ tip.innerHTML=`<b>${fmtMLong(x)}</b>${x>last?' <span class="muted">· comprometido</span>':""}<br>${hasIns?`Entradas <span class="num">${BRL.format(ins[k])}</span><br>`:""}Gastos <span class="num">${BRL.format(outs[k])}</span>${hasIns&&x<=last?`<br>Diferença <span class="num">${BRL.format(ins[k]-outs[k])}</span>`:""}${avg>0?`<br>Média <span class="num">${BRL.format(avg)}</span>`:""}`;
       tip.hidden=false; const sc=box.clientWidth/W, xr=(pl+(k+1)*bw)*sc+6, xl=(pl+k*bw)*sc-6-tip.offsetWidth; tip.style.top="4px"; tip.style.left=(xr+tip.offsetWidth<=box.clientWidth? xr : Math.max(0,xl))+"px"; };
     r.onmouseleave=()=>{ tip.hidden=true; };
     r.ondblclick=()=>{ selMonth=x; render(); }; });
