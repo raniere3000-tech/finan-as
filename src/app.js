@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="1.6";
+const VERSAO="1.7";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -368,15 +368,18 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("cover").hidden
 function applyTabs(){ document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tab)); ["resumo","cartoes","analise","lancamentos","pasta","dados"].forEach(t=>$("v-"+t).hidden= !(t===tab || (t==="pasta"&&tab==="dados"))); }
 
 function rResumo(){
-  const m=selMonth, cur=ITEMS.filter(i=>inM(i,m)), prev=ITEMS.filter(i=>inM(i,m-1));
+  const m=selMonth, cur=ITEMS.filter(i=>inM(i,m));
   const ins=cur.filter(i=>!isOut(i)).reduce((s,i)=>s+i.val,0), outs=cur.filter(isOut).reduce((s,i)=>s+i.val,0);
-  const outsPrev=prev.filter(isOut).reduce((s,i)=>s+i.val,0);
   $("kIn").textContent=BRL.format(ins); $("kOut").textContent=BRL.format(outs);
   const cards=cur.filter(i=>isOut(i)&&i.kind==="cartao").reduce((s,i)=>s+i.val,0);
   $("kOutSub").textContent=`${BRL.format(cards)} em cartões · ${BRL.format(outs-cards)} em Pix e boletos`;
   const bal=ins-outs; $("kBal").textContent=BRL.format(bal); $("kBal").className="val "+(bal<0?"out":"in");
-  if(outsPrev>0){ const d=(outs-outsPrev)/outsPrev*100; $("kVar").textContent=(d>0?"+":"")+d.toFixed(0)+"%"; $("kVar").className="val "+(d>0?"out":"in"); $("kVarSub").textContent=`saídas em ${fmtMLong(m-1)}: ${BRL.format(outsPrev)}`; }
-  else { $("kVar").textContent="—"; $("kVar").className="val"; $("kVarSub").textContent="sem dados do mês anterior"; }
+  // tudo o que já está comprometido nos meses seguintes (parcelas de cartão e lançamentos parcelados)
+  const futOut=ITEMS.filter(i=>!i.ign && isOut(i) && (i.mEnd!=null? i.mEnd : i.m) > m), ultM=futOut.reduce((x,i)=>Math.max(x, i.mEnd!=null? i.mEnd : i.m), m);
+  let com=0; for(let x=m+1;x<=ultM;x++) com+=ITEMS.filter(i=>inM(i,x)&&isOut(i)).reduce((s,i)=>s+i.val,0);
+  const prox=ITEMS.filter(i=>inM(i,m+1)&&isOut(i)).reduce((s,i)=>s+i.val,0);
+  $("kCom").textContent=BRL.format(com);
+  $("kComSub").textContent= com>0? `parcelas até ${fmtMLong(ultM)} · ${fmtMLong(m+1)}: ${BRL.format(prox)}` : "nada comprometido nos próximos meses";
   const cats=group(cur.filter(isOut), i=>i.cat, null, i=>catColor(i.cat));
   $("rCats").innerHTML=catSubBars(cur.filter(isOut), cats, outs);
   $("rCatsTot").textContent=BRL.format(outs);

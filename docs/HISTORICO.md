@@ -45,6 +45,8 @@ Em ordem de pedido:
 
 18. **Ajuda para preencher (v1.6)** — na aba + Lançar, um quadro que recolhe e expande mostra o que falta, a categoria que vai ser usada, avisa quando a data é de outro mês, sugere repetir o que foi lançado no mês anterior e completa tipo, categoria e meio quando a descrição já foi usada (com botão para lançar com o último valor). As descrições antigas aparecem como sugestão ao digitar.
 
+19. **Cards do Resumo (v1.7)** — o quarto card deixou de ser "Comparado ao mês anterior" e virou "Orçamento comprometido": soma de todos os gastos já conhecidos dos meses seguintes (parcelas), até a última parcela. "Sobrou no mês" virou "Diferença".
+
 ## Ideias que ficaram em aberto
 
 - Mover "Ajustar metas" do Resumo para a aba Dados (sugerido, sem resposta).
