@@ -43,6 +43,7 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     await page.click("#cvGo"); await page.waitForTimeout(500);
     await page.evaluate(() => { selMonth = ITEMS.find(i => i.est).m; render(); });
     ok(await page.isVisible("#estBar"), `${nome}: aviso de estornos aparece no Resumo`);
+    ok(await page.evaluate(() => /R\$/.test(document.getElementById("kCom").textContent)), `${nome}: card de orçamento comprometido`);
     for (const t of ["resumo", "cartoes", "analise", "dados", "lancamentos"]) { await page.click(`[data-tab=${t}]`); await page.waitForTimeout(120); }
     await page.fill("#lTx tr.newrow [data-f=desc]", "Conta de luz"); await page.press("#lTx tr.newrow [data-f=desc]", "Tab");
     await page.fill("#lTx tr.newrow [data-f=val]", "120,00"); await page.press("#lTx tr.newrow [data-f=val]", "Tab"); await page.waitForTimeout(200);
