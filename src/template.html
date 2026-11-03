@@ -188,6 +188,21 @@ th{background:rgba(238,243,241,.6)}
 .txhead{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .chip.rev[aria-pressed="true"]{background:#8a5a00;border-color:#8a5a00;color:#fff}
 .ok-btn{color:var(--accent);font-weight:700}
+.lajuda{margin:10px 0 4px;padding:8px 12px;border:1px dashed var(--accent);border-radius:12px;background:#f1faf6;font-size:.88rem}
+.lajuda summary{cursor:pointer;font-weight:700;color:var(--accent);padding:2px 0;list-style:none;display:flex;align-items:center;gap:6px}
+.lajuda summary::-webkit-details-marker{display:none}
+.lajuda summary::before{content:"▸";transition:transform .15s}
+.lajuda[open] summary::before{transform:rotate(90deg)}
+.lajuda summary::after{content:"recolher";margin-left:auto;font-weight:400;font-size:.8rem;color:var(--muted)}
+.lajuda:not([open]) summary::after{content:"expandir"}
+#lAjuda{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.lajuda .passos{display:flex;flex-wrap:wrap;gap:6px 14px}
+.lajuda .ok{color:var(--accent);font-weight:700}
+.lajuda .falta{color:#8a5a00;font-weight:700}
+.lajuda .erro{color:#b42318;font-weight:700}
+.lajuda .chips{gap:6px}
+.lajuda .chip{padding:5px 12px;font-size:.84rem}
+.lajuda .acoes{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .hint{display:block;font-size:.78rem;color:#5b3fa6;font-weight:700;min-height:1em;margin-top:3px}
 .rules td input{font:inherit;padding:5px 8px;border:1px solid rgba(255,255,255,.85);border-radius:7px;width:100%;min-width:7rem;background:rgba(255,255,255,.6)}
 .rules td select{max-width:15rem}
@@ -593,6 +608,8 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
     <div class="panel">
       <header><h2>Lançamentos do mês</h2><span class="small muted" id="lSum"></span></header>
       <p class="small muted" style="margin:0">Preencha como numa planilha: escreva na primeira linha (verde) e ela vira um lançamento. Toque em qualquer célula para corrigir. Arraste para o lado para ver todas as colunas.</p>
+      <details id="lAjudaBox" class="lajuda" open><summary>Ajuda para preencher</summary><div id="lAjuda" aria-live="polite"></div></details>
+      <datalist id="lSug"></datalist>
       <div class="sheet"><table><thead><tr><th class="stk">Descrição</th><th class="r">Valor (R$)</th><th>Data</th><th>Tipo</th><th>Categoria › subcategoria</th><th>Pago com</th><th>Parc.</th><th></th></tr></thead><tbody id="lTx"></tbody></table></div>
     </div>
   </section>

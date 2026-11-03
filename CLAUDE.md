@@ -59,7 +59,7 @@ Versão pessoal (com as categorias e dados do dono): `python3 build.py --data pr
 
 ## Abas
 
-Resumo (totais, 50/30/20 clicável por grupo, rosca + para onde foi com subcategorias, gráfico mês a mês com comprometido/média/entradas em `mesesChart`, como foi pago, já comprometido) · Cartões (escolher cartões, tabela de compras com categoria, "Eu pago", valor editável = "sua parte", ✓ para confirmar palpites) · **+ Lançar** (tabela estilo planilha; linha verde vira lançamento) · Análise (categoria → subcategoria, lojas, tendência) · Dados (alertas de preenchimento, cartões, categorias/subcategorias, regras aprendidas, pasta e arquivos).
+Resumo (totais, 50/30/20 clicável por grupo, rosca + para onde foi com subcategorias, gráfico mês a mês com comprometido/média/entradas em `mesesChart`, como foi pago, já comprometido) · Cartões (escolher cartões, tabela de compras com categoria, "Eu pago", valor editável = "sua parte", ✓ para confirmar palpites) · **+ Lançar** (tabela estilo planilha; linha verde vira lançamento; quadro recolhível `#lAjudaBox` com ajuda: o que falta, categoria prevista, aviso de data fora do mês, sugestões do que foi lançado no mês anterior e último valor da mesma descrição — `lAjuda`, `lLembrar`, `lRecorrentes`) · Análise (categoria → subcategoria, lojas, tendência) · Dados (alertas de preenchimento, cartões, categorias/subcategorias, regras aprendidas, pasta e arquivos).
 
 ## Testar sem internet
 
