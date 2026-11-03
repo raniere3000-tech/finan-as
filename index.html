@@ -386,6 +386,13 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
 .sheet td.v input{font-family:var(--f-num);text-align:right}
 .sheet td.v input.part{color:#6a4fc0;font-weight:700;background:#f4f0fc}
 .chip.terc{opacity:.6;border-style:dashed}
+.sheet .fn{color:var(--muted);font-size:.78rem}
+.filesrow td{background:#fafcfb}
+.afl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:4px}
+.af{display:inline-flex;align-items:center;gap:6px;font-size:.85rem}
+.af input{font:inherit;width:4.6rem;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-family:var(--f-num)}
+.ver{display:inline-block;vertical-align:middle;font-family:var(--f-num);font-size:.72rem;font-weight:600;letter-spacing:0;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 8px;margin-left:4px;position:relative;top:-2px}
+.glass h2 .ver{font-size:.8rem;top:-6px}
 </style>
 </head>
 <body>
@@ -395,7 +402,7 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
   <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
   <div class="glass">
     <div class="mark"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#17806b" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h5"/></svg></div>
-    <div><h2 id="cvTitle">Leitor de Faturas</h2><p id="cvLead">Cartões, Pix e boletos num lugar só. Veja para onde foi o dinheiro e onde dá para economizar.</p></div>
+    <div><h2 id="cvTitle">Leitor de Faturas <span class="ver" data-ver>v1.2</span></h2><p id="cvLead">Cartões, Pix e boletos num lugar só. Veja para onde foi o dinheiro e onde dá para economizar.</p></div>
     <div class="cvconnect" id="cvConnect">
       <ol class="cvsteps">
         <li><span><b>Escolha a pasta</b> onde ficam as faturas (CSV, Excel ou PDF) e a planilha. Pode ser a pasta do Google Drive no computador.</span></li>
@@ -426,7 +433,7 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
 </div>
 <div class="bgfx" aria-hidden="true"><span class="g1"></span><span class="g2"></span><span class="g3"></span></div>
 <div class="top"><div class="wrap">
-  <div class="brand"><h1>Leitor de Faturas</h1><span>Cartões, Pix e boletos num lugar só</span></div>
+  <div class="brand"><h1>Leitor de Faturas <span class="ver" data-ver>v1.2</span></h1><span>Cartões, Pix e boletos num lugar só</span></div>
   <div class="folder">
     <span id="folderPill" class="pill"><span class="dot"></span><span id="folderTxt">Sem pasta conectada</span></span>
     <button id="bDir" class="primary" type="button">Conectar pasta</button>
@@ -845,6 +852,9 @@ if(window.pdfjsLib){ try{ pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.
 const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c2457a","#4b6b8a","#a0623a","#5b8c8a","#7a7f2a","#6b6b6b"];
 
 // ---------------- state ----------------
+// versão do leitor (mude aqui a cada atualização)
+const VERSAO="1.2";
+document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
 let revMode=false, catTouched=false, tab="resumo", selMonth=null, selCards=null, selCat=null, editingId=null, lTipo="Saída";
@@ -1070,7 +1080,9 @@ function build(){
     if(f.erro){ INFO.push({nome:f.nome,erro:f.erro,origem:f.origem}); continue; }
     const p=parseRows(f.colMode? f.rows : linesToRows(f.text||""), cfg, f.colMode, f.nome, state.regras);
     const seen={};
-    p.items.forEach(it=>{ const base=[it.cardKey,isoD(it.date),it.desc,it.val,it.n+"/"+it.N].join("|"); seen[base]=(seen[base]||0)+1; it.id=base+"#"+seen[base]; it.kind="cartao"; it.tipo="Saída"; });
+    p.items.forEach(it=>{ const base=[it.cardKey,isoD(it.date),it.desc,it.val,it.n+"/"+it.N].join("|"); seen[base]=(seen[base]||0)+1; it.id=base+"#"+seen[base]; it.kind="cartao"; it.tipo="Saída";
+      // fatura sem número do cartão: usa o final que você informou para este arquivo
+      const af=(state.arqFinal||{})[f.nome]; if(!it.fin && af){ it.fin=af; it.cardKey=it.bank+"|"+af; } });
     items=items.concat(p.items); INFO.push({nome:f.nome,p,origem:f.origem});
   }
   for(const m of state.manuais){
@@ -1212,15 +1224,26 @@ function rResumo(){
 function cardKeys(){ return [...new Set(ITEMS.filter(i=>i.kind==="cartao"&&(!i.ign||i.terc)).map(i=>i.cardKey))]; }
 function cardMissing(k){ const c=state.cartoes[k]||{}; const f=[]; if(c.terceiro) return f; if(!c.fech) f.push("fechamento"); if(!c.venc) f.push("vencimento"); return f; }
 const inpS='font:inherit;padding:5px 7px;border:1px solid var(--line);border-radius:7px';
+function fileLabel(n){ return String(n).split("/").pop(); }
+function cardFiles(k){ return [...new Set(ITEMS.filter(i=>i.kind==="cartao"&&i.cardKey===k&&i.file).map(i=>i.file))]; }
+function filesRowHTML(k, cols){
+  if(!k.endsWith("|")) return "";
+  const fl=cardFiles(k); if(!fl.length) return "";
+  return `<tr class="filesrow"><td colspan="${cols}" class="full"><div class="afl"><span class="small muted">Sem número do cartão. Arquivos:</span>${fl.map(n=>`<label class="af"><span title="${esc(n)}">📄 ${esc(fileLabel(n))}</span><input data-af="${esc(n)}" inputmode="numeric" maxlength="4" placeholder="final" aria-label="Final do cartão do arquivo ${esc(fileLabel(n))}"></label>`).join("")}</div><span class="small muted">Se cada arquivo for de um cartão diferente, digite os 4 últimos números e eles viram cartões separados.</span></td></tr>`;
+}
 function cardCfgHTML(keys, withStatus){
   return keys.map(k=>{ const c=state.cartoes[k]||{}; const [b,f]=k.split("|"); const miss=cardMissing(k);
     return `<tr><td>${esc(b)} <span class="num">${esc(f||"")}</span></td><td data-l="Apelido"><input data-k="${esc(k)}" data-f="alias" value="${esc(c.alias||"")}" placeholder="${esc(b+(f?" "+f:""))}" style="width:9rem;${inpS}" aria-label="Apelido"></td>
       <td class="r" data-l="Fecha dia"><input class="num${c.fech?"":" need"}" data-k="${esc(k)}" data-f="fech" inputmode="numeric" value="${esc(c.fech||"")}" placeholder="dia" style="width:3.6rem;${inpS}" aria-label="Fecha dia"></td>
       <td class="r" data-l="Vence dia"><input class="num${c.venc?"":" need"}" data-k="${esc(k)}" data-f="venc" inputmode="numeric" value="${esc(c.venc||"")}" placeholder="dia" style="width:3.6rem;${inpS}" aria-label="Vence dia"></td>
       <td data-l="Quem paga"><select data-k="${esc(k)}" data-f="terceiro" aria-label="Quem paga este cartão" style="${inpS}"><option value=""${c.terceiro?"":" selected"}>Eu</option><option value="1"${c.terceiro?" selected":""}>Outra pessoa</option></select></td>
-      ${withStatus?`<td data-l="Situação">${c.terceiro?'<span class="tag">fora da conta</span>':miss.length?`<span class="tag warn">falta ${miss.join(" e ")}</span>`:`<span class="tag in">ok</span>`}</td>`:""}</tr>`; }).join("")||`<tr><td colspan="5" class="empty">Nenhum cartão ainda. Eles aparecem quando você carrega uma fatura.</td></tr>`;
+      ${withStatus?`<td data-l="Situação">${c.terceiro?'<span class="tag">fora da conta</span>':miss.length?`<span class="tag warn">falta ${miss.join(" e ")}</span>`:`<span class="tag in">ok</span>`}</td>`:""}</tr>${filesRowHTML(k, withStatus?6:5)}`; }).join("")||`<tr><td colspan="5" class="empty">Nenhum cartão ainda. Eles aparecem quando você carrega uma fatura.</td></tr>`;
 }
 function bindCardCfg(root){
+  root.querySelectorAll("input[data-af]").forEach(inp=>inp.onchange=()=>{ const n=inp.dataset.af, v=inp.value.replace(/\D/g,"").slice(-4); if(!v) return;
+    state.arqFinal=Object.assign(state.arqFinal||{},{[n]:v});
+    const it=ITEMS.find(i=>i.kind==="cartao"&&i.file===n); if(it){ const oldK=it.bank+"|", newK=it.bank+"|"+v; if(state.cartoes[oldK] && !state.cartoes[newK]){ const o=state.cartoes[oldK]; state.cartoes[newK]={fech:o.fech||"",venc:o.venc||""}; } }
+    save(); render(); toast(`${esc(fileLabel(n))} agora é o cartão final ${v}.`,[{label:"Desfazer",run:()=>{ delete state.arqFinal[n]; save(); render(); }}]); });
   root.querySelectorAll("select[data-f=terceiro]").forEach(sel=>sel.onchange=()=>{ const k=sel.dataset.k; state.cartoes[k]=state.cartoes[k]||{}; if(sel.value) state.cartoes[k].terceiro=true; else delete state.cartoes[k].terceiro; save(); render();
     toast(sel.value? `${esc(cardName(k))} agora é de outra pessoa: as compras dele saíram da sua conta.` : `${esc(cardName(k))} voltou para a sua conta.`); });
   root.querySelectorAll("input[data-f]").forEach(inp=>inp.onchange=()=>{ const k=inp.dataset.k,f=inp.dataset.f; state.cartoes[k]=state.cartoes[k]||{}; let v=inp.value.trim(); if(f!=="alias") v=v?Math.min(31,Math.max(1,parseInt(v,10)||0)):""; state.cartoes[k][f]=v; save(); render(); }); }
@@ -1395,7 +1418,7 @@ function rCartoes(){
     <td class="v">${i.ign? fmtNum(i.val) : `<input class="num${i.val!==i.val0?" part":""}" data-v="${esc(i.id)}" inputmode="decimal" value="${fmtNum(i.val)}" title="${i.val!==i.val0?`Sua parte. Valor na fatura: ${fmtNum(i.val0)}`:"Toque para mudar o valor (ex.: só a sua parte)"}" aria-label="Valor que você paga">`}</td>
     <td>${i.terc?'<span class="sm">cartão de outra pessoa</span>':payIgn?'<span class="sm">pagamento da fatura</span>':`<div class="cs">${catSubSelect(i)}${needsReview(i)?`<button type="button" class="okb" data-ok="${esc(i.id)}" title="A categoria está certa: guardar como regra" aria-label="Confirmar categoria">✓</button>`:""}</div>`}</td>
     <td class="ck"><input type="checkbox" data-ck="${esc(i.id)}" ${i.ign?"":"checked"} ${payIgn||i.terc?"disabled":""} aria-label="Eu pago esta compra"></td>
-    <td class="sm num">${fmtD(i.date)}</td><td class="sm">${esc(cardName(i.cardKey))}</td><td class="sm num">${i.N>1?(i.n+(m-i.m))+"/"+i.N:"—"}</td></tr>`; }).join("")||`<tr><td colspan="7" class="empty">${revMode?"Nada para revisar.":"Nenhuma compra para os cartões escolhidos neste mês."}</td></tr>`;
+    <td class="sm num">${fmtD(i.date)}</td><td class="sm" title="${esc(i.file||"")}">${esc(cardName(i.cardKey))}${i.cardKey.endsWith("|")&&i.file?` <span class="fn">· ${esc(fileLabel(i.file))}</span>`:""}</td><td class="sm num">${i.N>1?(i.n+(m-i.m))+"/"+i.N:"—"}</td></tr>`; }).join("")||`<tr><td colspan="7" class="empty">${revMode?"Nada para revisar.":"Nenhuma compra para os cartões escolhidos neste mês."}</td></tr>`;
   bindCatSelects($("cTx"));
   $("cTx").querySelectorAll("[data-v]").forEach(inp=>inp.onchange=()=>{ const id=inp.dataset.v, it=ITEMS.find(x=>x.id===id); if(!it) return; const v=parseValue(inp.value,false);
     if(isNaN(v)||v<0){ inp.value=fmtNum(it.val); return; }
