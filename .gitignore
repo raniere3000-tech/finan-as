@@ -1,0 +1,11 @@
+# dados pessoais: nunca enviar para o GitHub
+leitor-faturas-dados.json
+*.csv
+*.pdf
+*.xlsx
+*.xls
+*.xlsm
+*.ofx
+~$*
+.DS_Store
+Thumbs.db
