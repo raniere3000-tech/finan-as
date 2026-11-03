@@ -413,6 +413,11 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
 .donut .ctr span{font-size:.78rem;color:var(--muted)}
 .donut path{cursor:pointer;transition:opacity .15s}
 .donut svg:hover path{opacity:.45} .donut svg path:hover{opacity:1}
+.barrow .tg{display:inline-block;width:1em;color:var(--muted);transition:transform .15s;flex:none}
+.catgrp.open > .barrow .tg{transform:rotate(90deg)}
+.catgrp .subs{display:none}
+.catgrp.open .subs{display:block}
+.linkbtn{background:none;border:none;padding:0;color:var(--accent);font-weight:700;font-size:inherit;text-decoration:underline;cursor:pointer}
 .barrow.sub{font-size:.84rem;padding:3px 6px 3px 24px;color:var(--muted)}
 .barrow.sub .track{height:8px}
 .barrow.sub .nm{color:var(--ink)}
@@ -516,7 +521,7 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
       </div>
     </div>
     <div class="panel">
-      <header><h2>Para onde foi o dinheiro</h2><span class="small muted">Toque numa categoria ou subcategoria para ver o detalhe</span></header>
+      <header><h2>Para onde foi o dinheiro</h2><span class="small muted">Toque numa categoria para abrir as subcategorias · <button type="button" class="linkbtn" id="rCatsAll">Abrir todas</button></span></header>
       <div class="donutwrap"><div id="rDonut" class="donut"></div>
         <div class="dlist"><div class="bars" id="rCats"></div><div class="totalrow"><span>Total de saídas</span><span class="num" id="rCatsTot"></span></div></div></div>
     </div>

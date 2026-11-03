@@ -419,6 +419,11 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
 .donut .ctr span{font-size:.78rem;color:var(--muted)}
 .donut path{cursor:pointer;transition:opacity .15s}
 .donut svg:hover path{opacity:.45} .donut svg path:hover{opacity:1}
+.barrow .tg{display:inline-block;width:1em;color:var(--muted);transition:transform .15s;flex:none}
+.catgrp.open > .barrow .tg{transform:rotate(90deg)}
+.catgrp .subs{display:none}
+.catgrp.open .subs{display:block}
+.linkbtn{background:none;border:none;padding:0;color:var(--accent);font-weight:700;font-size:inherit;text-decoration:underline;cursor:pointer}
 .barrow.sub{font-size:.84rem;padding:3px 6px 3px 24px;color:var(--muted)}
 .barrow.sub .track{height:8px}
 .barrow.sub .nm{color:var(--ink)}
@@ -525,7 +530,7 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
       </div>
     </div>
     <div class="panel">
-      <header><h2>Para onde foi o dinheiro</h2><span class="small muted">Toque numa categoria ou subcategoria para ver o detalhe</span></header>
+      <header><h2>Para onde foi o dinheiro</h2><span class="small muted">Toque numa categoria para abrir as subcategorias · <button type="button" class="linkbtn" id="rCatsAll">Abrir todas</button></span></header>
       <div class="donutwrap"><div id="rDonut" class="donut"></div>
         <div class="dlist"><div class="bars" id="rCats"></div><div class="totalrow"><span>Total de saídas</span><span class="num" id="rCatsTot"></span></div></div></div>
     </div>
@@ -938,7 +943,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="1.7";
+const VERSAO="1.8";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1307,6 +1312,11 @@ function rResumo(){
   $("rCats").innerHTML=catSubBars(cur.filter(isOut), cats, outs);
   $("rCatsTot").textContent=BRL.format(outs);
   $("rCats").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ selCat=b.dataset.k; go("analise"); });
+  const syncAll=()=>{ const gs=[...$("rCats").querySelectorAll(".catgrp")]; $("rCatsAll").textContent= gs.length && gs.every(g=>g.classList.contains("open"))? "Fechar todas" : "Abrir todas"; };
+  $("rCats").querySelectorAll("[data-tog]").forEach(b=>b.onclick=()=>{ const k=b.dataset.tog, g=b.parentElement, ab=!g.classList.contains("open");
+    g.classList.toggle("open",ab); b.setAttribute("aria-expanded",ab); if(ab) catsAbertas.add(k); else catsAbertas.delete(k); syncAll(); });
+  $("rCatsAll").onclick=()=>{ const abrir=$("rCatsAll").textContent==="Abrir todas"; $("rCats").querySelectorAll("[data-tog]").forEach(b=>{ const g=b.parentElement; g.classList.toggle("open",abrir); b.setAttribute("aria-expanded",abrir); if(abrir) catsAbertas.add(b.dataset.tog); else catsAbertas.delete(b.dataset.tog); }); syncAll(); };
+  syncAll();
   $("rDonut").innerHTML=donutSVG(cats, outs);
   $("rDonut").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ selCat=b.dataset.k; go("analise"); });
   mesesChart(m);
@@ -1318,13 +1328,15 @@ function rResumo(){
 }
 
 // ---------------- resumo: rosca, categorias com subcategorias, mês a mês ----------------
+const catsAbertas=new Set();
 function catSubBars(list, cats, total){
   if(!cats.length) return `<div class="empty">Nenhuma saída neste mês.</div>`;
   const max=Math.max(...cats.map(r=>Math.abs(r.v)),1);
-  const row=(r,sub)=>`<button type="button" class="barrow${sub?" sub":""}" data-k="${esc(r.cat)}"><span class="nm">${sub?"":`<span class="sw" style="background:${r.c}"></span>`}${esc(r.label)}</span><span class="track"><span class="fill" style="width:${Math.max(0,r.v)/max*100}%;background:${r.c};${sub?"opacity:.55":""}"></span></span><span class="v">${BRL.format(r.v)}</span><span class="p">${total?Math.round(r.v/total*100)+"%":""}</span></button>`;
+  const row=(r,sub,tog)=>`<button type="button" class="barrow${sub?" sub":""}" ${sub?`data-k="${esc(r.cat)}"`:`data-tog="${esc(r.cat)}" aria-expanded="${catsAbertas.has(r.cat)}"`}><span class="nm">${sub?"":`<span class="tg">${tog?"▸":""}</span><span class="sw" style="background:${r.c}"></span>`}${esc(r.label)}</span><span class="track"><span class="fill" style="width:${Math.max(0,r.v)/max*100}%;background:${r.c};${sub?"opacity:.55":""}"></span></span><span class="v">${BRL.format(r.v)}</span><span class="p">${total?Math.round(r.v/total*100)+"%":""}</span></button>`;
   return cats.map(c=>{ const subs=group(list.filter(i=>i.cat===c.k), i=>i.sub||"(sem subcategoria)").filter(x=>Math.abs(x.v)>=0.005);
     const showSubs= subs.length>1 || (subs[0] && subs[0].k!=="(sem subcategoria)" && subs[0].k!==c.k);
-    return row({cat:c.k,label:c.label,v:c.v,c:c.c},false)+(showSubs? subs.map(x=>row({cat:c.k,label:x.label,v:x.v,c:c.c},true)).join("") : ""); }).join("");
+    const lista= showSubs? subs : [{label:"ver as compras",v:c.v}];
+    return `<div class="catgrp${catsAbertas.has(c.k)?" open":""}">`+row({cat:c.k,label:c.label,v:c.v,c:c.c},false,true)+`<div class="subs">`+lista.map(x=>row({cat:c.k,label:x.label,v:x.v,c:c.c},true)).join("")+`</div></div>`; }).join("");
 }
 function donutSVG(cats, total){
   const pos=cats.filter(c=>c.v>0), sum=pos.reduce((s,c)=>s+c.v,0);

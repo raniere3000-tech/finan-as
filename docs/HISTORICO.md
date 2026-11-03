@@ -47,6 +47,8 @@ Em ordem de pedido:
 
 19. **Cards do Resumo (v1.7)** — o quarto card deixou de ser "Comparado ao mês anterior" e virou "Orçamento comprometido": soma de todos os gastos já conhecidos dos meses seguintes (parcelas), até a última parcela. "Sobrou no mês" virou "Diferença".
 
+20. **Subcategorias recolhidas (v1.8)** — em "Para onde foi o dinheiro" as subcategorias começam fechadas; tocar na categoria abre/fecha, "Abrir todas" abre tudo. Tocar numa subcategoria leva para a Análise.
+
 ## Ideias que ficaram em aberto
 
 - Mover "Ajustar metas" do Resumo para a aba Dados (sugerido, sem resposta).
