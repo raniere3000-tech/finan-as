@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="1.3";
+const VERSAO="1.4";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -378,14 +378,77 @@ function rResumo(){
   if(outsPrev>0){ const d=(outs-outsPrev)/outsPrev*100; $("kVar").textContent=(d>0?"+":"")+d.toFixed(0)+"%"; $("kVar").className="val "+(d>0?"out":"in"); $("kVarSub").textContent=`saídas em ${fmtMLong(m-1)}: ${BRL.format(outsPrev)}`; }
   else { $("kVar").textContent="—"; $("kVar").className="val"; $("kVarSub").textContent="sem dados do mês anterior"; }
   const cats=group(cur.filter(isOut), i=>i.cat, null, i=>catColor(i.cat));
-  $("rCats").innerHTML=barsHTML(cats, outs, {click:true, empty:"Nenhuma saída neste mês."});
+  $("rCats").innerHTML=catSubBars(cur.filter(isOut), cats, outs);
   $("rCatsTot").textContent=BRL.format(outs);
   $("rCats").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ selCat=b.dataset.k; go("analise"); });
+  $("rDonut").innerHTML=donutSVG(cats, outs);
+  $("rDonut").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ selCat=b.dataset.k; go("analise"); });
+  mesesChart(m);
   const pay=group(cur.filter(isOut), i=>i.kind==="cartao"?"c:"+i.cardKey:"m:"+i.meio, i=>i.kind==="cartao"?cardName(i.cardKey):i.meio);
   $("rPay").innerHTML=barsHTML(pay, outs);
   const fut=[]; for(let k=1;k<=3;k++){ const v=ITEMS.filter(i=>inM(i,m+k)&&isOut(i)).reduce((s,i)=>s+i.val,0); fut.push({k:"f"+k,label:fmtMLong(m+k),v}); }
   $("rFut").innerHTML=barsHTML(fut.filter(f=>f.v), 0, {empty:"Nada comprometido nos próximos meses."});
   rMetas(m, cur, ins, outs);
+}
+
+// ---------------- resumo: rosca, categorias com subcategorias, mês a mês ----------------
+function catSubBars(list, cats, total){
+  if(!cats.length) return `<div class="empty">Nenhuma saída neste mês.</div>`;
+  const max=Math.max(...cats.map(r=>Math.abs(r.v)),1);
+  const row=(r,sub)=>`<button type="button" class="barrow${sub?" sub":""}" data-k="${esc(r.cat)}"><span class="nm">${sub?"":`<span class="sw" style="background:${r.c}"></span>`}${esc(r.label)}</span><span class="track"><span class="fill" style="width:${Math.max(0,r.v)/max*100}%;background:${r.c};${sub?"opacity:.55":""}"></span></span><span class="v">${BRL.format(r.v)}</span><span class="p">${total?Math.round(r.v/total*100)+"%":""}</span></button>`;
+  return cats.map(c=>{ const subs=group(list.filter(i=>i.cat===c.k), i=>i.sub||"(sem subcategoria)").filter(x=>Math.abs(x.v)>=0.005);
+    const showSubs= subs.length>1 || (subs[0] && subs[0].k!=="(sem subcategoria)" && subs[0].k!==c.k);
+    return row({cat:c.k,label:c.label,v:c.v,c:c.c},false)+(showSubs? subs.map(x=>row({cat:c.k,label:x.label,v:x.v,c:c.c},true)).join("") : ""); }).join("");
+}
+function donutSVG(cats, total){
+  const pos=cats.filter(c=>c.v>0), sum=pos.reduce((s,c)=>s+c.v,0);
+  if(!sum) return `<div class="empty">Nenhuma saída neste mês.</div>`;
+  const R=100, r=64, cx=110, cy=110, gap=pos.length>1? 0.012 : 0; let a=-Math.PI/2, out="";
+  const pt=(ang,rad)=>[cx+rad*Math.cos(ang), cy+rad*Math.sin(ang)];
+  pos.forEach(c=>{ const frac=c.v/sum, a0=a+gap, a1=a+frac*2*Math.PI-gap; a+=frac*2*Math.PI; if(a1<=a0) return;
+    if(frac>0.9999){ out+=`<path data-k="${esc(c.k)}" fill="${c.c}" fill-rule="evenodd" d="M${cx-R},${cy}a${R},${R} 0 1,0 ${2*R},0a${R},${R} 0 1,0 ${-2*R},0M${cx-r},${cy}a${r},${r} 0 1,0 ${2*r},0a${r},${r} 0 1,0 ${-2*r},0"><title>${esc(c.label)}: ${BRL.format(c.v)} (100%)</title></path>`; return; }
+    const big=(a1-a0)>Math.PI?1:0, [x0,y0]=pt(a0,R), [x1,y1]=pt(a1,R), [x2,y2]=pt(a1,r), [x3,y3]=pt(a0,r);
+    out+=`<path data-k="${esc(c.k)}" fill="${c.c}" d="M${x0},${y0}A${R},${R} 0 ${big},1 ${x1},${y1}L${x2},${y2}A${r},${r} 0 ${big},0 ${x3},${y3}Z"><title>${esc(c.label)}: ${BRL.format(c.v)} (${Math.round(frac*100)}%)</title></path>`; });
+  return `<svg viewBox="0 0 220 220" role="img" aria-label="Gastos do mês por categoria, total ${BRL.format(total)}">${out}</svg><div class="ctr"><b>${BRL.format(total)}</b><span>total de saídas</span></div>`;
+}
+let mesesTimer=null;
+window.addEventListener("resize",()=>{ clearTimeout(mesesTimer); mesesTimer=setTimeout(()=>{ if(tab==="resumo") mesesChart(selMonth); },150); });
+function mesesChart(sel){
+  const box=$("rMeses"); if(!box) return;
+  const realMs=ITEMS.filter(i=>!i.ign && i.kind==="cartao").map(i=>i.m), allMs=monthsAll();
+  if(!allMs.length){ box.innerHTML=`<div class="empty">Sem dados.</div>`; $("rMesesLeg").innerHTML=""; $("rMesesNote").textContent=""; return; }
+  const last=realMs.length? Math.max(...realMs) : sel;          // último mês com fatura real
+  const lastAll=Math.max(...allMs, last);                       // até a última parcela conhecida
+  const first=Math.max(Math.min(...allMs), last-11);
+  const ms=[]; for(let x=first;x<=lastAll;x++) ms.push(x);
+  const outs=ms.map(x=>ITEMS.filter(i=>inM(i,x)&&isOut(i)).reduce((s,i)=>s+i.val,0));
+  const ins=ms.map(x=>ITEMS.filter(i=>inM(i,x)&&!isOut(i)).reduce((s,i)=>s+i.val,0));
+  const past=ms.map((x,k)=>({x,v:outs[k]})).filter(o=>o.x<=last && o.v>0);
+  const avg=past.length? past.reduce((s,o)=>s+o.v,0)/past.length : 0;
+  const hasIns=ins.some(v=>v>0);
+  $("rMesesNote").textContent= lastAll>last? `de ${fmtM(first)} a ${fmtM(lastAll)} · depois de ${fmtM(last)} só o que já está comprometido` : `de ${fmtM(first)} a ${fmtM(last)}`;
+  $("rMesesLeg").innerHTML=`<span><i style="background:var(--out)"></i>Gastos</span>${lastAll>last?'<span><i style="background:#e9b8a6"></i>Já comprometido (parcelas)</span>':""}<span><i class="dash"></i>Média de gastos ${BRL.format(avg)}</span>${hasIns?'<span><i class="ln" style="background:var(--in)"></i>Entradas</span>':""}`;
+  const W=Math.max(300, box.clientWidth||760), H=W<520?220:260, pl=W<520?52:60, pr=10, pt=14, pb=30;
+  const max=Math.max(...outs, ...ins, avg, 1), nice=niceMax(max), ih=H-pt-pb, bw=(W-pl-pr)/ms.length;
+  const y=v=>pt+ih*(1-v/nice), fs=W<520?10:11, short=v=>v>=1000? (v/1000).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mil" : Math.round(v).toLocaleString("pt-BR");
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Gastos por mês, com média e entradas">`;
+  [0,nice/2,nice].forEach(t=>{ s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="#e8eeeb"/><text x="${pl-6}" y="${y(t)+4}" text-anchor="end" font-size="${fs}" fill="#62716b" font-family="JetBrains Mono, monospace">${short(t)}</text>`; });
+  const step=Math.ceil(ms.length/(W<520?6:12));
+  ms.forEach((x,k)=>{ const v=outs[k], h=ih*v/nice, w=Math.max(4,Math.min(36,bw*0.6)), X=pl+k*bw+(bw-w)/2, fut=x>last, rr=Math.min(4,w/2,h);
+    if(h>0) s+=`<path d="M${X},${y(0)}V${y(v)+rr}Q${X},${y(v)} ${X+rr},${y(v)}H${X+w-rr}Q${X+w},${y(v)} ${X+w},${y(v)+rr}V${y(0)}Z" fill="${fut?"#e9b8a6":"#b54728"}"${x===sel?' stroke="#1f2a27" stroke-width="1.5"':""}/>`;
+    if(k%step===0||x===sel) s+=`<text x="${pl+k*bw+bw/2}" y="${H-pb+16}" text-anchor="middle" font-size="${fs}" fill="${x===sel?"#1f2a27":"#62716b"}" font-weight="${x===sel?700:400}">${fmtM(x)}</text>`; });
+  if(avg>0) s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(avg)}" y2="${y(avg)}" stroke="#1f2a27" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  if(hasIns){ const pts=ms.map((x,k)=>[pl+k*bw+bw/2, y(ins[k]), ins[k]]).filter((p,k)=>ms[k]<=last||ins[k]>0);
+    s+=`<polyline points="${pts.map(p=>p[0]+","+p[1]).join(" ")}" fill="none" stroke="#1f7a3a" stroke-width="2" stroke-linejoin="round"/>`;
+    pts.forEach(p=>{ if(p[2]>0) s+=`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="#1f7a3a" stroke="#fff" stroke-width="2"/>`; }); }
+  ms.forEach((x,k)=>{ s+=`<rect class="hit" data-k="${k}" x="${pl+k*bw}" y="${pt}" width="${bw}" height="${ih}"/>`; });
+  box.innerHTML=s+`</svg><div class="mtip" hidden></div>`;
+  const tip=box.querySelector(".mtip");
+  box.querySelectorAll(".hit").forEach(r=>{ const k=+r.dataset.k, x=ms[k];
+    r.onmouseenter=r.onclick=()=>{ tip.innerHTML=`<b>${fmtMLong(x)}</b>${x>last?' <span class="muted">· comprometido</span>':""}<br>Gastos <span class="num">${BRL.format(outs[k])}</span>${hasIns?`<br>Entradas <span class="num">${BRL.format(ins[k])}</span>`:""}<br>Média <span class="num">${BRL.format(avg)}</span>`;
+      tip.hidden=false; const sc=box.clientWidth/W, xr=(pl+(k+1)*bw)*sc+6, xl=(pl+k*bw)*sc-6-tip.offsetWidth; tip.style.top="4px"; tip.style.left=(xr+tip.offsetWidth<=box.clientWidth? xr : Math.max(0,xl))+"px"; };
+    r.onmouseleave=()=>{ tip.hidden=true; };
+    r.ondblclick=()=>{ selMonth=x; render(); }; });
 }
 
 // ---------------- cartões: ajustes + alertas ----------------

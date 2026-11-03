@@ -34,6 +34,7 @@ Em ordem de pedido:
 13. Compras **não pagas por mim**: coluna "Eu pago", valor editável ("sua parte") e "Quem paga" por cartão (outra pessoa → fora da conta).
 14. Quando a fatura não traz o número do cartão: mostrar o **nome do arquivo** e permitir informar o final por arquivo (vira cartão separado). Selo de **versão** ao lado do título.
 15. **Estornos** (v1.3): o leitor acha cada estorno/crédito e a compra que ele devolve e zera os dois, com aviso no topo e filtro "Estornos" na aba Cartões. Ex. real: as 12 parcelas da Myhub.Ia foram devolvidas por um "Crédito de confiança" de R$ 838,80.
+16. **Gráficos no Resumo** (v1.4): rosca dos gastos do mês ao lado de "Para onde foi o dinheiro" (agora com as subcategorias abertas) e gráfico "Gastos mês a mês" com as parcelas já comprometidas até a última, linha da média de gastos e linha das entradas.
 
 ## Preferências do usuário (observadas)
 
