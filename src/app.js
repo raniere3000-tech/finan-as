@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="1.5";
+const VERSAO="1.6";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -763,11 +763,17 @@ function rLanc(){
   if(!lDraft.date){ const t=new Date(); lDraft.date=isoD(monthIndex(t)===m? t : new Date(Math.floor(m/12),m%12,1)); }
   const recs=list.map(i=>state.manuais.find(x=>x.id===i.id)).filter(Boolean);
   $("lTx").innerHTML=lRowHTML(lDraft,true)+recs.map(r=>lRowHTML(r,false)).join("");
+  const sug=[...new Set(state.manuais.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(x=>x.desc).filter(Boolean))].slice(0,300);
+  $("lSug").innerHTML=sug.map(d=>`<option value="${esc(d)}"></option>`).join("");
   $("lTx").querySelectorAll("tr").forEach(tr=>{
     const id=tr.dataset.id, isNew=!id;
     tr.querySelectorAll("[data-f]").forEach(el=>el.onchange=()=>lCell(isNew?null:id, el.dataset.f, el.value, tr));
+    if(isNew){ const d=tr.querySelector("[data-f=desc]"); d.setAttribute("list","lSug"); d.setAttribute("autocomplete","off");
+      d.oninput=()=>{ lDraft.desc=d.value.trim(); if(!lDraft.csTouched){ delete lDraft.cat; delete lDraft.sub; } lAjuda(); };
+      tr.querySelector("[data-f=val]").oninput=()=>lAjuda(); }
     const d=tr.querySelector("[data-del]"); if(d) d.onclick=()=>{ const rec=state.manuais.find(x=>x.id===id); state.manuais=state.manuais.filter(x=>x.id!==id); save(); render(); toast("Lançamento excluído.",[{label:"Desfazer",run:()=>{ state.manuais.push(rec); save(); render(); }}]); };
   });
+  lAjuda();
 }
 function lCell(id, f, v, tr){
   const r= id? state.manuais.find(x=>x.id===id) : lDraft; if(!r) return;
@@ -776,11 +782,21 @@ function lCell(id, f, v, tr){
   else if(f==="cs"){ if(!v){ delete r.cat; delete r.sub; r.csTouched=false; } else { const [c,sb]=v.split("||"); r.cat=c; r.sub=sb; r.csTouched=true;
       if(id && (r.tipo||"Saída")==="Saída" && r.desc){ const L=learnRule(r.desc,c,sb); if(L) toast(`Aprendido: “${esc(L.mk)}” vai para <b>${esc(sb||c)}</b>.`); } } }
   else if(f==="tipo"){ r.tipo=v; delete r.cat; delete r.sub; r.csTouched=false; }
-  else r[f]= f==="desc"? v.trim() : v;
+  else { r[f]= f==="desc"? v.trim() : v; if(f==="meio") r.meioTouched=true; }
   if(id && f==="tipo"){ const ent=v==="Entrada"; const c=cfg.cats.find(x=>ent? x.tipo!=="Despesa" : x.tipo==="Despesa"); r.cat=c?c.nome:""; r.sub=(subOptions(r.cat)[0])||""; }
   if(id){ if(r.origem==="planilha") r.alterado=true; if(state.seed) state.seed=false; save(); render(); return; }
   // linha nova: vira lançamento quando tem descrição e valor
   if(f==="desc" && !r.csTouched && (r.tipo||"Saída")==="Saída" && r.desc){ const c=categorize(r.desc,"",cfg,state.regras); if(c.how!=="padrao"){ r.cat=c.cat; r.sub=c.sub; } }
+  if(f==="desc") lLembrar(r, tr);
+  if(!lCommit()){
+    // atualiza só a linha nova sem perder o foco
+    const cs=tr.querySelector("[data-f=cs]"); if(f!=="cs" && (f==="tipo"||f==="desc")){ cs.innerHTML=(r.cat?"":`<option value="" selected>${(r.tipo||"Saída")==="Entrada"?"escolha a categoria":"automática pela descrição"}</option>`)+catOptions(r.cat,r.sub||"",(r.tipo||"Saída")==="Entrada"); }
+    const vc=tr.querySelector("td.v"); vc.className="v "+((r.tipo||"Saída")==="Entrada"?"in":"out");
+    lAjuda();
+  }
+}
+function lCommit(){
+  const r=lDraft;
   if(r.desc && r.val>0){
     const tipo=r.tipo||"Saída";
     if(!r.cat){ if(tipo==="Saída"){ const c=categorize(r.desc,"",cfg,state.regras); r.cat=c.cat; r.sub=c.sub; } else { const c=cfg.cats.find(x=>x.tipo!=="Despesa"); r.cat=c?c.nome:""; r.sub=(subOptions(r.cat)[0])||""; } }
@@ -789,11 +805,60 @@ function lCell(id, f, v, tr){
     state.manuais.push(rec); if(state.seed) state.seed=false; const keepDate=r.date; lDraft={date:keepDate}; save(); render();
     toast(`Lançado: ${esc(rec.desc)}, ${BRL.format(rec.val)} em ${esc(rec.sub||rec.cat)}.`);
     setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },30);
-  } else {
-    // atualiza só a linha nova sem perder o foco
-    const cs=tr.querySelector("[data-f=cs]"); if(f!=="cs" && (f==="tipo"||f==="desc")){ cs.innerHTML=(r.cat?"":`<option value="" selected>${(r.tipo||"Saída")==="Entrada"?"escolha a categoria":"automática pela descrição"}</option>`)+catOptions(r.cat,r.sub||"",(r.tipo||"Saída")==="Entrada"); }
-    const vc=tr.querySelector("td.v"); vc.className="v "+((r.tipo||"Saída")==="Entrada"?"in":"out");
+    return true;
   }
+  return false;
+}
+// ---- ajuda no preenchimento ----
+const lNorm=t=>String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+const recM=r=>{ const p=String(r.date||"").split("-"); return p.length===3? (+p[0])*12+(+p[1]-1) : null; };
+function lUltimo(desc){ const k=lNorm(desc); if(!k) return null; return state.manuais.filter(x=>lNorm(x.desc)===k).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0]||null; }
+function lLembrar(r, tr){
+  // descrição igual a um lançamento anterior: copia tipo, categoria e meio; sugere o último valor
+  delete r.sugVal; const u=lUltimo(r.desc); if(!u) return;
+  r.tipo=u.tipo||"Saída"; if(!r.csTouched){ r.cat=u.cat; r.sub=u.sub||""; } if(!r.meioTouched) r.meio=u.meio||"Pix"; if(!(r.parc>1) && u.parc>1) r.parc=u.parc;
+  if(!(r.val>0)) r.sugVal=u.val;
+  if(tr){ const q=f=>tr.querySelector(`[data-f=${f}]`); q("tipo").value=r.tipo; q("cs").innerHTML=catOptions(r.cat,r.sub||"",r.tipo==="Entrada"); q("meio").value=r.meio; if(r.parc>1) q("parc").value=r.parc; if(r.sugVal) q("val").placeholder=fmtNum(r.sugVal); }
+}
+function lRecorrentes(m){
+  // o que foi lançado à mão no mês anterior e ainda não aparece neste mês
+  const ja=new Set(state.manuais.filter(x=>recM(x)===m).map(x=>lNorm(x.desc))), vistos=new Set(), out=[];
+  state.manuais.filter(x=>recM(x)===m-1 && !(x.parc>1)).sort((a,b)=>b.val-a.val).forEach(x=>{ const k=lNorm(x.desc); if(!k||ja.has(k)||vistos.has(k)) return; vistos.add(k); out.push(x); });
+  return out.slice(0,8);
+}
+function lUsar(x){
+  const t=new Date(), m=selMonth, dia=Math.min(+String(x.date).slice(8,10)||1, new Date(Math.floor(m/12),m%12+1,0).getDate());
+  lDraft={date:isoD(monthIndex(t)===m? t : new Date(Math.floor(m/12),m%12,dia)), desc:x.desc, tipo:x.tipo||"Saída", cat:x.cat, sub:x.sub||"", meio:x.meio||"Pix", parc:1, val:x.val, conferir:true};
+  rLanc(); const v=$("lTx").querySelector("tr.newrow [data-f=val]"); if(v){ v.focus(); v.select(); }
+}
+function lAjuda(){
+  const el=$("lAjuda"); if(!el) return; const r=lDraft, ent=(r.tipo||"Saída")==="Entrada", m=selMonth;
+  const tr=$("lTx").querySelector("tr.newrow"), vIn=tr&&tr.querySelector("[data-f=val]");
+  const vTxt=vIn? vIn.value.trim() : "", vNum=vTxt? parseValue(vTxt,false) : NaN;
+  let h="";
+  const rec=lRecorrentes(m);
+  if(rec.length && !r.desc) h+=`<div><b>Lançados em ${esc(fmtMLong(m-1))} e ainda não neste mês.</b> Toque para repetir:</div><div class="chips">${rec.map((x,i)=>`<button type="button" class="chip" data-rec="${i}">${esc(x.desc)}<span class="num">${BRL.format(x.val)}</span></button>`).join("")}</div>`;
+  const passo=(ok,txt)=>`<span class="${ok?"ok":"falta"}">${ok?"✓":"○"} ${txt}</span>`;
+  if(r.desc || vTxt){
+    const valOk=vNum>0, valErr=vTxt && !(vNum>0);
+    let cat="";
+    if(r.cat) cat=`${esc(r.sub||r.cat)}${r.csTouched?"":" (automática)"}`;
+    else if(!ent && r.desc){ const c=categorize(r.desc,"",cfg,state.regras); cat=`${esc(c.sub||c.cat)} <span class="muted">(${c.how==="regra"?"pelo que você ensinou":c.how==="palavra"?"pela palavra-chave":c.how==="palpite"?"palpite, confira":"não reconheci, escolha se quiser"})</span>`; }
+    h+=`<div class="passos">${passo(!!r.desc,"Descrição")}${valErr?`<span class="erro">✕ Valor: escreva só números, ex.: 49,90</span>`:passo(valOk, valOk? "Valor "+BRL.format(vNum) : "Valor")}${cat?`<span>Categoria: <b>${cat}</b></span>`:(ent?`<span class="falta">○ Escolha a categoria da entrada</span>`:"")}</div>`;
+    const dm=recM(r); if(dm!=null && dm!==m) h+=`<div class="falta">A data é de ${esc(fmtMLong(dm))}: o lançamento vai aparecer lá, não em ${esc(fmtMLong(m))}.</div>`;
+    if(r.parc>1 && valOk) h+=`<div class="muted">${r.parc}x de ${BRL.format(vNum)} (o valor é de cada parcela).</div>`;
+    if(r.sugVal && !vTxt) h+=`<div class="acoes"><span>Da última vez foi ${BRL.format(r.sugVal)}.</span><button type="button" class="primary" data-usarval>Lançar com ${BRL.format(r.sugVal)}</button></div>`;
+    else if(r.conferir && r.desc && valOk) h+=`<div class="acoes"><span>Confira o valor e a data.</span><button type="button" class="primary" data-lancar>Lançar</button><button type="button" data-limpar>Limpar</button></div>`;
+    else if(r.desc && !valOk) h+=`<div class="muted">Falta o valor. Ao preencher, a linha vira lançamento.</div>`;
+  }
+  if(!h) h=`<div class="muted">Escreva a descrição. Se você já lançou igual antes, eu completo tipo, categoria, meio de pagamento e sugiro o valor.</div>`;
+  el.innerHTML=h;
+  const box=$("lAjudaBox"); if(box && !box.dataset.ok){ box.dataset.ok=1; try{ if(localStorage.getItem("lf3-ajuda")==="0") box.open=false; }catch(e){}
+    box.ontoggle=()=>{ try{ localStorage.setItem("lf3-ajuda", box.open?"1":"0"); }catch(e){} }; }
+  el.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>lUsar(rec[+b.dataset.rec]));
+  const uv=el.querySelector("[data-usarval]"); if(uv) uv.onclick=()=>{ r.val=r.sugVal; delete r.sugVal; lCommit(); };
+  const ln=el.querySelector("[data-lancar]"); if(ln) ln.onclick=()=>{ if(vNum>0) r.val=vNum; delete r.conferir; lCommit(); };
+  const lp=el.querySelector("[data-limpar]"); if(lp) lp.onclick=()=>{ lDraft={date:r.date}; rLanc(); };
 }
 $("lCancel").onclick=resetForm;
 $("lDel").onclick=()=>{ const id=editingId; const rec=state.manuais.find(x=>x.id===id); state.manuais=state.manuais.filter(x=>x.id!==id); resetForm(); save(); render();
