@@ -383,6 +383,9 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
   .sheet td.v input{padding:7px 4px}
   .sheet .dsc{white-space:normal;line-height:1.25;font-size:.82rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 }
+.sheet td.v input{font-family:var(--f-num);text-align:right}
+.sheet td.v input.part{color:#6a4fc0;font-weight:700;background:#f4f0fc}
+.chip.terc{opacity:.6;border-style:dashed}
 </style>
 </head>
 <body>
@@ -503,14 +506,14 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
       <div class="panel"><header><h2>Por categoria</h2></header><div class="bars" id="cCats"></div></div>
       <div class="panel">
         <header><h2>Ajustes dos cartões</h2></header>
-        <div class="tablebox"><table><thead><tr><th>Cartão</th><th>Apelido</th><th class="r">Fecha dia</th><th class="r">Vence dia</th></tr></thead><tbody id="cCfg"></tbody></table></div>
+        <div class="tablebox"><table><thead><tr><th>Cartão</th><th>Apelido</th><th class="r">Fecha dia</th><th class="r">Vence dia</th><th>Quem paga</th></tr></thead><tbody id="cCfg"></tbody></table></div>
         <p class="small muted" style="margin:0">Fecha: compras a partir desse dia vão para a fatura seguinte. Vence: se for antes do fechamento, a fatura conta no mês seguinte.</p>
       </div>
     </div>
     <div class="panel">
       <header><h2>Compras da fatura</h2><div class="txhead"><button type="button" class="chip" id="cAll" aria-pressed="true">Todas</button><button type="button" class="chip rev" id="cRev" aria-pressed="false">A revisar <span class="num" id="cRevN">0</span></button><input id="cQ" type="search" placeholder="Buscar" aria-label="Buscar compra" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:9px"></div></header>
-      <p class="small muted" style="margin:0" id="cLearnTip">Corrigiu uma categoria? O leitor aprende com a loja e passa a classificar as próximas compras sozinho. Bolinha <span class="dot learn"></span> = aprendido com você, <span class="dot warn"></span> = palpite ou sem regra: confira e toque em ✓. Desmarque “Conta” para a compra não entrar na conta.</p>
-      <div class="sheet"><table><thead><tr><th class="stk">Descrição</th><th class="r">Valor (R$)</th><th>Categoria › subcategoria</th><th title="Desmarque para não contar">Conta</th><th>Data</th><th>Cartão</th><th>Parcela</th></tr></thead><tbody id="cTx"></tbody></table></div>
+      <p class="small muted" style="margin:0" id="cLearnTip">Corrigiu uma categoria? O leitor aprende com a loja e passa a classificar as próximas compras sozinho. Bolinha <span class="dot learn"></span> = aprendido com você, <span class="dot warn"></span> = palpite ou sem regra: confira e toque em ✓. Não é você quem paga? Desmarque <b>Eu pago</b>. Paga só uma parte? Toque no valor e digite a sua parte. Cartão inteiro de outra pessoa: em Dados › Cartões, mude “Quem paga”.</p>
+      <div class="sheet"><table><thead><tr><th class="stk">Descrição</th><th class="r">Valor (R$)</th><th>Categoria › subcategoria</th><th title="Desmarque se não é você quem paga">Eu pago</th><th>Data</th><th>Cartão</th><th>Parcela</th></tr></thead><tbody id="cTx"></tbody></table></div>
     </div>
   </section>
 
@@ -570,7 +573,7 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
     </div>
     <div class="panel">
       <header><h2>Cartões</h2><span class="small muted">Aparecem sozinhos quando uma fatura nova é lida</span></header>
-      <div class="tablebox stack"><table><thead><tr><th>Cartão</th><th>Apelido</th><th class="r">Fecha dia</th><th class="r">Vence dia</th><th>Situação</th></tr></thead><tbody id="dCards"></tbody></table></div>
+      <div class="tablebox stack"><table><thead><tr><th>Cartão</th><th>Apelido</th><th class="r">Fecha dia</th><th class="r">Vence dia</th><th>Quem paga</th><th>Situação</th></tr></thead><tbody id="dCards"></tbody></table></div>
       <p class="small muted" style="margin:0">Fecha: compras a partir desse dia vão para a fatura seguinte. Vence: dia de pagar; se for antes do fechamento, a fatura conta no mês seguinte.</p>
     </div>
     <div class="panel" id="dCatsPanel">
@@ -1077,9 +1080,11 @@ function build(){
   }
   items.forEach(it=>{ const e=state.edicoes[it.id]; if(e&&e.card) it.cardKey=e.card; });
   computeMonths(items, state.cartoes);
-  items.forEach(it=>{ const e=state.edicoes[it.id]; if(!e) return;
+  items.forEach(it=>{ it.val0=it.val; const e=state.edicoes[it.id]; if(!e) return;
     if(e.cat){ it.cat=e.cat; it.sub=e.sub||""; } if(e.ign!=null) it.ign=!!e.ign; if(e.desc) it.desc=e.desc; if(e.val!=null&&e.val!=="") it.val=+e.val;
     if(e.mes!=null&&e.mes!==""){ const sp=it.mEnd-it.m; it.m=+e.mes; it.mEnd=it.m+sp; } it.edited=true; });
+  // cartão pago por outra pessoa: nada dele entra na sua conta
+  items.forEach(it=>{ const c=it.kind==="cartao" && state.cartoes[it.cardKey]; if(c && c.terceiro && !it.ign){ it.ign=true; it.terc=true; } });
   ITEMS=items;
 }
 const inM=(i,m)=>!i.ign && i.m<=m && i.mEnd>=m;
@@ -1204,17 +1209,21 @@ function rResumo(){
 }
 
 // ---------------- cartões: ajustes + alertas ----------------
-function cardKeys(){ return [...new Set(ITEMS.filter(i=>i.kind==="cartao"&&!i.ign).map(i=>i.cardKey))]; }
-function cardMissing(k){ const c=state.cartoes[k]||{}; const f=[]; if(!c.fech) f.push("fechamento"); if(!c.venc) f.push("vencimento"); return f; }
+function cardKeys(){ return [...new Set(ITEMS.filter(i=>i.kind==="cartao"&&(!i.ign||i.terc)).map(i=>i.cardKey))]; }
+function cardMissing(k){ const c=state.cartoes[k]||{}; const f=[]; if(c.terceiro) return f; if(!c.fech) f.push("fechamento"); if(!c.venc) f.push("vencimento"); return f; }
 const inpS='font:inherit;padding:5px 7px;border:1px solid var(--line);border-radius:7px';
 function cardCfgHTML(keys, withStatus){
   return keys.map(k=>{ const c=state.cartoes[k]||{}; const [b,f]=k.split("|"); const miss=cardMissing(k);
     return `<tr><td>${esc(b)} <span class="num">${esc(f||"")}</span></td><td data-l="Apelido"><input data-k="${esc(k)}" data-f="alias" value="${esc(c.alias||"")}" placeholder="${esc(b+(f?" "+f:""))}" style="width:9rem;${inpS}" aria-label="Apelido"></td>
       <td class="r" data-l="Fecha dia"><input class="num${c.fech?"":" need"}" data-k="${esc(k)}" data-f="fech" inputmode="numeric" value="${esc(c.fech||"")}" placeholder="dia" style="width:3.6rem;${inpS}" aria-label="Fecha dia"></td>
       <td class="r" data-l="Vence dia"><input class="num${c.venc?"":" need"}" data-k="${esc(k)}" data-f="venc" inputmode="numeric" value="${esc(c.venc||"")}" placeholder="dia" style="width:3.6rem;${inpS}" aria-label="Vence dia"></td>
-      ${withStatus?`<td data-l="Situação">${miss.length?`<span class="tag warn">falta ${miss.join(" e ")}</span>`:`<span class="tag in">ok</span>`}</td>`:""}</tr>`; }).join("")||`<tr><td colspan="5" class="empty">Nenhum cartão ainda. Eles aparecem quando você carrega uma fatura.</td></tr>`;
+      <td data-l="Quem paga"><select data-k="${esc(k)}" data-f="terceiro" aria-label="Quem paga este cartão" style="${inpS}"><option value=""${c.terceiro?"":" selected"}>Eu</option><option value="1"${c.terceiro?" selected":""}>Outra pessoa</option></select></td>
+      ${withStatus?`<td data-l="Situação">${c.terceiro?'<span class="tag">fora da conta</span>':miss.length?`<span class="tag warn">falta ${miss.join(" e ")}</span>`:`<span class="tag in">ok</span>`}</td>`:""}</tr>`; }).join("")||`<tr><td colspan="5" class="empty">Nenhum cartão ainda. Eles aparecem quando você carrega uma fatura.</td></tr>`;
 }
-function bindCardCfg(root){ root.querySelectorAll("input[data-f]").forEach(inp=>inp.onchange=()=>{ const k=inp.dataset.k,f=inp.dataset.f; state.cartoes[k]=state.cartoes[k]||{}; let v=inp.value.trim(); if(f!=="alias") v=v?Math.min(31,Math.max(1,parseInt(v,10)||0)):""; state.cartoes[k][f]=v; save(); render(); }); }
+function bindCardCfg(root){
+  root.querySelectorAll("select[data-f=terceiro]").forEach(sel=>sel.onchange=()=>{ const k=sel.dataset.k; state.cartoes[k]=state.cartoes[k]||{}; if(sel.value) state.cartoes[k].terceiro=true; else delete state.cartoes[k].terceiro; save(); render();
+    toast(sel.value? `${esc(cardName(k))} agora é de outra pessoa: as compras dele saíram da sua conta.` : `${esc(cardName(k))} voltou para a sua conta.`); });
+  root.querySelectorAll("input[data-f]").forEach(inp=>inp.onchange=()=>{ const k=inp.dataset.k,f=inp.dataset.f; state.cartoes[k]=state.cartoes[k]||{}; let v=inp.value.trim(); if(f!=="alias") v=v?Math.min(31,Math.max(1,parseInt(v,10)||0)):""; state.cartoes[k][f]=v; save(); render(); }); }
 let alertHidden=false;
 function alerts(){
   const pend=cardKeys().map(k=>({k,miss:cardMissing(k)})).filter(x=>x.miss.length);
@@ -1361,11 +1370,11 @@ $("mReset").onclick=()=>{ state.metas={pct:{nec:50,des:30,pou:20},renda:"",map:{
 $("mEdit").onclick=()=>{ const ed=$("mEditor"); ed.hidden=!ed.hidden; $("mEdit").setAttribute("aria-expanded",!ed.hidden); $("mEdit").textContent=ed.hidden?"Ajustar metas":"Fechar ajustes"; if(!ed.hidden) rMetaEditor(); };
 
 function rCartoes(){
-  const m=selMonth; const keys=[...new Set(ITEMS.filter(i=>i.kind==="cartao"&&!i.ign).map(i=>i.cardKey))];
+  const m=selMonth; const keys=cardKeys();
   if(!selCards) selCards=new Set(keys);
   const allOn=keys.every(k=>selCards.has(k));
   const sumK=k=>ITEMS.filter(i=>i.kind==="cartao"&&i.cardKey===k&&inM(i,m)).reduce((s,i)=>s+i.val,0);
-  $("cChips").innerHTML=`<button type="button" class="chip" data-all="1" aria-pressed="${allOn}">Todos</button>`+keys.map(k=>`<button type="button" class="chip" data-k="${esc(k)}" aria-pressed="${selCards.has(k)}">${esc(cardName(k))}<span class="num">${BRL.format(sumK(k))}</span></button>`).join("");
+  $("cChips").innerHTML=`<button type="button" class="chip" data-all="1" aria-pressed="${allOn}">Todos</button>`+keys.map(k=>`<button type="button" class="chip${(state.cartoes[k]||{}).terceiro?" terc":""}" data-k="${esc(k)}" aria-pressed="${selCards.has(k)}">${esc(cardName(k))}<span class="num">${(state.cartoes[k]||{}).terceiro?"outra pessoa":BRL.format(sumK(k))}</span></button>`).join("");
   $("cChips").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ if(b.dataset.all){ selCards=new Set(allOn?[]:keys); } else { const k=b.dataset.k; selCards.has(k)?selCards.delete(k):selCards.add(k); } render(); });
   const list=ITEMS.filter(i=>i.kind==="cartao"&&selCards.has(i.cardKey)&&inM(i,m));
   const tot=list.reduce((s,i)=>s+i.val,0);
@@ -1380,15 +1389,20 @@ function rCartoes(){
   const nRev=base.filter(needsReview).length; $("cRevN").textContent=nRev; if(revMode&&!nRev) revMode=false;
   $("cAll").setAttribute("aria-pressed",!revMode); $("cRev").setAttribute("aria-pressed",revMode);
   const all=base.filter(i=>!revMode||needsReview(i)).filter(i=>!q||i.desc.toLowerCase().includes(q)).sort((a,b)=>a.date-b.date);
-  $("cTx").innerHTML=all.map(i=>{ const proj=i.m<m, payIgn=i.ign && !(state.edicoes[i.id]&&state.edicoes[i.id].ign);
+  $("cTx").innerHTML=all.map(i=>{ const proj=i.m<m, payIgn=i.ign && !i.terc && !(state.edicoes[i.id]&&state.edicoes[i.id].ign);
     const dot= i.ign? "" : i.edited? '<span class="dot info" title="alterado por você"></span>' : i.how==="regra"? `<span class="dot learn" title="aprendido: contém “${esc(i.rk)}”"></span>` : (i.how==="palpite"||i.how==="padrao")? `<span class="dot warn" title="${i.how==="palpite"?"palpite por lojas parecidas":"sem regra"}"></span>` : "";
     return `<tr class="${i.ign?"ign":proj?"proj":""}"><td class="stk"><div class="dsc" title="${esc(i.desc)}">${dot}<span class="t">${esc(i.desc)}</span></div></td>
-    <td class="v">${fmtNum(i.val)}</td>
-    <td>${payIgn?'<span class="sm">pagamento da fatura</span>':`<div class="cs">${catSubSelect(i)}${needsReview(i)?`<button type="button" class="okb" data-ok="${esc(i.id)}" title="A categoria está certa: guardar como regra" aria-label="Confirmar categoria">✓</button>`:""}</div>`}</td>
-    <td class="ck"><input type="checkbox" data-ck="${esc(i.id)}" ${i.ign?"":"checked"} ${payIgn?"disabled":""} aria-label="Contar esta compra"></td>
+    <td class="v">${i.ign? fmtNum(i.val) : `<input class="num${i.val!==i.val0?" part":""}" data-v="${esc(i.id)}" inputmode="decimal" value="${fmtNum(i.val)}" title="${i.val!==i.val0?`Sua parte. Valor na fatura: ${fmtNum(i.val0)}`:"Toque para mudar o valor (ex.: só a sua parte)"}" aria-label="Valor que você paga">`}</td>
+    <td>${i.terc?'<span class="sm">cartão de outra pessoa</span>':payIgn?'<span class="sm">pagamento da fatura</span>':`<div class="cs">${catSubSelect(i)}${needsReview(i)?`<button type="button" class="okb" data-ok="${esc(i.id)}" title="A categoria está certa: guardar como regra" aria-label="Confirmar categoria">✓</button>`:""}</div>`}</td>
+    <td class="ck"><input type="checkbox" data-ck="${esc(i.id)}" ${i.ign?"":"checked"} ${payIgn||i.terc?"disabled":""} aria-label="Eu pago esta compra"></td>
     <td class="sm num">${fmtD(i.date)}</td><td class="sm">${esc(cardName(i.cardKey))}</td><td class="sm num">${i.N>1?(i.n+(m-i.m))+"/"+i.N:"—"}</td></tr>`; }).join("")||`<tr><td colspan="7" class="empty">${revMode?"Nada para revisar.":"Nenhuma compra para os cartões escolhidos neste mês."}</td></tr>`;
   bindCatSelects($("cTx"));
-  $("cTx").querySelectorAll("[data-ck]").forEach(c=>c.onchange=()=>{ const id=c.dataset.ck; if(!c.checked){ state.edicoes[id]=Object.assign(state.edicoes[id]||{},{ign:true}); toast("Compra fora da conta.",[{label:"Desfazer",run:()=>{ delete state.edicoes[id].ign; save(); render(); }}]); } else if(state.edicoes[id]) delete state.edicoes[id].ign; save(); render(); });
+  $("cTx").querySelectorAll("[data-v]").forEach(inp=>inp.onchange=()=>{ const id=inp.dataset.v, it=ITEMS.find(x=>x.id===id); if(!it) return; const v=parseValue(inp.value,false);
+    if(isNaN(v)||v<0){ inp.value=fmtNum(it.val); return; }
+    state.edicoes[id]=state.edicoes[id]||{}; if(Math.abs(v-it.val0)<0.005) delete state.edicoes[id].val; else state.edicoes[id].val=Math.round(v*100)/100;
+    if(v===0){ delete state.edicoes[id].val; state.edicoes[id].ign=true; }
+    save(); render(); toast(v===0? "Compra removida da sua conta." : Math.abs(v-it.val0)<0.005? "Valor original de volta." : `Agora conta só ${BRL.format(v)} (sua parte) de ${BRL.format(it.val0)}.`,[{label:"Desfazer",run:()=>{ const e=state.edicoes[id]; if(e){ delete e.val; delete e.ign; } save(); render(); }}]); });
+  $("cTx").querySelectorAll("[data-ck]").forEach(c=>c.onchange=()=>{ const id=c.dataset.ck; if(!c.checked){ state.edicoes[id]=Object.assign(state.edicoes[id]||{},{ign:true}); toast("Compra removida da sua conta: não é paga por você.",[{label:"Desfazer",run:()=>{ delete state.edicoes[id].ign; save(); render(); }}]); } else if(state.edicoes[id]) delete state.edicoes[id].ign; save(); render(); });
 }
 $("cQ").oninput=()=>rCartoes();
 $("cAll").onclick=()=>{ revMode=false; rCartoes(); };
