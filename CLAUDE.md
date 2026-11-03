@@ -38,8 +38,9 @@ Versão pessoal (com as categorias e dados do dono): `python3 build.py --data pr
 
 ## Conceitos do domínio
 
-- **Mês da fatura** (`computeMonths` em template.html): `m = mês(data) + (parcData==="S" ? n-1 : 0) + (fech && dia>=fech ? 1 : 0) + (fech && venc && venc<fech ? 1 : 0)`. Compra conta no mês em que a fatura **vence**. Ex.: Nubank fecha dia 11 → compras de 11/09 a 10/10 caem em outubro.
+- **Mês da fatura** (`computeMonths` em template.html): `m = mês(data) + (parcData==="S" ? n-1 : 0) + (fech && dia>=fech ? 1 : 0) + (fech && venc && venc<fech ? 1 : 0)`. Compra conta no mês em que a fatura **vence**. Ex.: Nubank fecha dia 11 → compras de 11/09 a 10/10 caem em outubro. **Quando o nome do arquivo traz a data de vencimento** (`fileVenc`, ex.: `Fatura_2026-10-10.csv`), todas as linhas do arquivo usam esse mês (`it.mFat`) e a fórmula acima é ignorada: a fatura é a fonte da verdade.
 - **Parcelas futuras**: parcela n/N é projetada até `m+(N-n)` (campo `mEnd`), a menos que exista uma parcela posterior da mesma compra em outro arquivo.
+- **Parcela na descrição**: "Parcela n/N" ou final " - n/N" (ex.: Nubank "Pix no Crédito … - 11/12").
 - **parcData**: "S" quando a data do CSV é a da compra original (C6, Mercado Pago); "N" quando já é a data da parcela (Nubank).
 - **Pagamentos** (valor negativo + "pagamento") são ignorados (`ign`).
 - **Estornos** (`matchEstornos` em template.html, roda no fim do `build()`): todo valor negativo que não é pagamento procura a compra do mesmo banco, loja parecida (`estSim`), até 200 dias antes. Mesmo valor (ou soma das parcelas da mesma loja) → os dois ficam `ign` com `est="total"` (zerados). "Reversão do crédito de confiança" (+) anula o "Crédito de confiança" (−). Valor menor → `est="parcial"`, o crédito vai para o mês/categoria da compra. Sem compra → `est="sem"` (continua abatendo). Aviso azul `#estBar` no Resumo/Cartões; filtro "Estornos"; botão "Não é estorno" grava `edicoes[id].naoEst`.
