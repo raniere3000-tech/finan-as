@@ -23,7 +23,7 @@ tests/fixtures/     Faturas FALSAS de exemplo (Nubank e C6)
 
 1. Edite `src/*` (nunca o `index.html` direto).
 2. `python3 build.py` para gerar o `index.html`.
-3. `npm install` (primeira vez) e `npm test` — precisa passar no computador **e** no celular (390px).
+3. `npm install` (primeira vez) e `npm test` (no ambiente do Claude na nuvem: `CHROME_PATH=/opt/pw-browsers/chromium npm test`) — precisa passar no computador **e** no celular (390px).
 4. A cada mudança visível para o usuário, **aumente `VERSAO`** no topo de `src/app.js` (ex.: 1.2 → 1.3) e a `version` do `package.json`. O selo "v1.x" aparece ao lado do título.
 5. Commit em pt-BR descrevendo o que muda para o usuário. Pode fazer push direto na `main` (o usuário pediu alterações direto no GitHub).
 
@@ -42,6 +42,7 @@ Versão pessoal (com as categorias e dados do dono): `python3 build.py --data pr
 - **Parcelas futuras**: parcela n/N é projetada até `m+(N-n)` (campo `mEnd`), a menos que exista uma parcela posterior da mesma compra em outro arquivo.
 - **parcData**: "S" quando a data do CSV é a da compra original (C6, Mercado Pago); "N" quando já é a data da parcela (Nubank).
 - **Pagamentos** (valor negativo + "pagamento") são ignorados (`ign`).
+- **Estornos** (`matchEstornos` em template.html, roda no fim do `build()`): todo valor negativo que não é pagamento procura a compra do mesmo banco, loja parecida (`estSim`), até 200 dias antes. Mesmo valor (ou soma das parcelas da mesma loja) → os dois ficam `ign` com `est="total"` (zerados). "Reversão do crédito de confiança" (+) anula o "Crédito de confiança" (−). Valor menor → `est="parcial"`, o crédito vai para o mês/categoria da compra. Sem compra → `est="sem"` (continua abatendo). Aviso azul `#estBar` no Resumo/Cartões; filtro "Estornos"; botão "Não é estorno" grava `edicoes[id].naoEst`.
 - **Cartão** = chave `"Banco|final"` (ex.: `"Nubank|"` quando o arquivo não traz o final). O usuário pode dar o final por arquivo (`state.arqFinal`), apelido, dia de fechamento/vencimento e "Quem paga" (`terceiro` → tudo fora da conta).
 - **Categorização** (`categorize`): regras aprendidas do usuário (`state.regras`, a mais longa ganha) → palavras-chave (`cfg.kw`, a última que casa ganha) → palpite por tokens parecidos (`learnGuess`) → "Outros (Gerais)". Cada item guarda `how`: regra | palavra | palpite | padrao.
 - **Aprender**: trocar a categoria de uma compra cria/atualiza regra pela loja (`merchant()` → `learnRule`) e aplica às compras iguais; "Só esta compra" desfaz a regra.
@@ -49,7 +50,7 @@ Versão pessoal (com as categorias e dados do dono): `python3 build.py --data pr
 
 ## Estado (`state`, salvo no JSON da pasta e no localStorage `lf3-state`)
 
-`versao, cfg (da planilha, opcional), cartoes{chave:{alias,fech,venc,terceiro}}, arquivos[{nome,origem,text|rows,colMode,mod,size,manual?}], edicoes{idItem:{cat,sub,ign,val,desc,mes,card}}, manuais[{id,date,desc,tipo,cat,sub,meio,val,parc,origem}], regras[{k,t,ex,em}], extras{subs[{nome,cat,grp,kw,user?}],del[],mov{},ren{}}, metas{pct{nec,des,pou},renda,map}, arqFinal{arquivo:final}, planMod, pasta, seed`
+`versao, cfg (da planilha, opcional), cartoes{chave:{alias,fech,venc,terceiro}}, arquivos[{nome,origem,text|rows,colMode,mod,size,manual?}], edicoes{idItem:{cat,sub,ign,val,desc,mes,card,naoEst}}, manuais[{id,date,desc,tipo,cat,sub,meio,val,parc,origem}], regras[{k,t,ex,em}], extras{subs[{nome,cat,grp,kw,user?}],del[],mov{},ren{}}, metas{pct{nec,des,pou},renda,map}, arqFinal{arquivo:final}, planMod, pasta, seed`
 
 - Arquivos que saem da pasta saem da conta (exceto os escolhidos à mão, `manual:true`).
 - A pasta é relida ao voltar para a janela e a cada 60s (`autoScan`, silencioso).

@@ -11,7 +11,7 @@ try { local["xlsx.full.min.js"] = require.resolve("xlsx/dist/xlsx.full.min.js");
 try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); local["pdf.worker.min.js"] = require.resolve("pdfjs-dist/build/pdf.worker.min.js"); } catch (e) {}
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   let fails = 0; const ok = (c, msg) => { console.log((c ? "ok   " : "FALHA") + " " + msg); if (!c) fails++; };
   for (const [w, h, nome] of [[1280, 900, "computador"], [390, 844, "celular"]]) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
@@ -29,15 +29,18 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
       document.getElementById("cvConn").click();
       await new Promise(r => setTimeout(r, 2500));
       const cards = ITEMS.filter(i => i.kind === "cartao");
-      return { arquivos: state.arquivos.length, compras: cards.filter(i => !i.ign).length, pagamentos: cards.filter(i => i.ign).length,
+      return { arquivos: state.arquivos.length, compras: cards.filter(i => !i.ign).length, pagamentos: cards.filter(i => i.ign && !i.est).length, estornos: cards.filter(i => i.est === "total").length,
         uber: (cards.find(i => /uber/i.test(i.desc)) || {}).sub, json: !!written["leitor-faturas-dados.json"], resumo: !document.getElementById("cvSummary").hidden };
     }, fx);
     ok(r.arquivos === 2, `${nome}: leu as 2 faturas (${r.arquivos})`);
     ok(r.compras === 8 && r.pagamentos === 2, `${nome}: 8 compras e 2 pagamentos ignorados (${r.compras}/${r.pagamentos})`);
+    ok(r.estornos === 2, `${nome}: compra estornada e o estorno ficaram zerados (${r.estornos})`);
     ok(r.uber === "Uber / 99", `${nome}: categorizou Uber como "Uber / 99" (${r.uber})`);
     ok(r.json, `${nome}: gravou leitor-faturas-dados.json na pasta`);
     ok(r.resumo, `${nome}: capa mostra o resumo depois de ler`);
     await page.click("#cvGo"); await page.waitForTimeout(500);
+    await page.evaluate(() => { selMonth = ITEMS.find(i => i.est).m; render(); });
+    ok(await page.isVisible("#estBar"), `${nome}: aviso de estornos aparece no Resumo`);
     for (const t of ["resumo", "cartoes", "analise", "dados", "lancamentos"]) { await page.click(`[data-tab=${t}]`); await page.waitForTimeout(120); }
     await page.fill("#lTx tr.newrow [data-f=desc]", "Conta de luz"); await page.press("#lTx tr.newrow [data-f=desc]", "Tab");
     await page.fill("#lTx tr.newrow [data-f=val]", "120,00"); await page.press("#lTx tr.newrow [data-f=val]", "Tab"); await page.waitForTimeout(200);
