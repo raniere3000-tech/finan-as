@@ -43,3 +43,15 @@ Se a pasta estiver dentro do **Google Drive para computador** (ou OneDrive, Drop
 
 - Não coloque suas faturas nem o `leitor-faturas-dados.json` no repositório. O `.gitignore` já bloqueia CSV, PDF, Excel e o JSON de dados.
 - A página carrega apenas bibliotecas públicas de CDN: [SheetJS](https://sheetjs.com) (Excel), [pdf.js](https://mozilla.github.io/pdf.js/) (PDF) e fontes do Google Fonts.
+
+## Para desenvolver
+
+O `index.html` é gerado; o código fica em `src/`.
+
+```bash
+python3 build.py      # gera o index.html a partir de src/ e data/defaults.json
+npm install           # primeira vez (Playwright, SheetJS e pdf.js para o teste)
+npm test              # build + teste no computador e no celular
+```
+
+Detalhes de arquitetura, regras do domínio e convenções: [CLAUDE.md](CLAUDE.md). Histórico das decisões: [docs/HISTORICO.md](docs/HISTORICO.md).

@@ -1,5 +1,6 @@
 # dados pessoais: nunca enviar para o GitHub
 leitor-faturas-dados.json
+private/
 *.csv
 *.pdf
 *.xlsx
@@ -7,5 +8,10 @@ leitor-faturas-dados.json
 *.xlsm
 *.ofx
 ~$*
+# faturas falsas usadas no teste podem ir
+!tests/fixtures/*.csv
+
+node_modules/
+package-lock.json
 .DS_Store
 Thumbs.db

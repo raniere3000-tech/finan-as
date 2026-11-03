@@ -1,0 +1,659 @@
+{
+ "cfg": {
+  "cats": [
+   {
+    "nome": "RECEITAS FIXAS",
+    "tipo": "Receita",
+    "grupo": null
+   },
+   {
+    "nome": "RECEITAS VARIÁVEIS",
+    "tipo": "Receita",
+    "grupo": null
+   },
+   {
+    "nome": "BENEFÍCIOS",
+    "tipo": "Benefício",
+    "grupo": null
+   },
+   {
+    "nome": "POUPANÇA E INVESTIMENTOS",
+    "tipo": "Despesa",
+    "grupo": "Investimentos"
+   },
+   {
+    "nome": "HABITAÇÃO",
+    "tipo": "Despesa",
+    "grupo": "Despesas Essenciais"
+   },
+   {
+    "nome": "DÍVIDAS",
+    "tipo": "Despesa",
+    "grupo": "Despesas Essenciais"
+   },
+   {
+    "nome": "SAÚDE",
+    "tipo": "Despesa",
+    "grupo": "Despesas Essenciais"
+   },
+   {
+    "nome": "TRANSPORTE",
+    "tipo": "Despesa",
+    "grupo": "Despesas Essenciais"
+   },
+   {
+    "nome": "DESPESAS PESSOAIS",
+    "tipo": "Despesa",
+    "grupo": "Despesas Essenciais"
+   },
+   {
+    "nome": "EDUCAÇÃO",
+    "tipo": "Despesa",
+    "grupo": "Educação"
+   },
+   {
+    "nome": "LAZER",
+    "tipo": "Despesa",
+    "grupo": "Gastos Livres"
+   },
+   {
+    "nome": "OUTROS",
+    "tipo": "Despesa",
+    "grupo": "Gastos Livres"
+   }
+  ],
+  "subs": [
+   [
+    "Salário (Líquido)",
+    "RECEITAS FIXAS"
+   ],
+   [
+    "Renda Extra",
+    "RECEITAS FIXAS"
+   ],
+   [
+    "13º Salário Líquido",
+    "RECEITAS VARIÁVEIS"
+   ],
+   [
+    "Férias",
+    "RECEITAS VARIÁVEIS"
+   ],
+   [
+    "Bônus e Extras",
+    "RECEITAS VARIÁVEIS"
+   ],
+   [
+    "Crédito Vale Refeição",
+    "BENEFÍCIOS"
+   ],
+   [
+    "Crédito Vale Alimentação",
+    "BENEFÍCIOS"
+   ],
+   [
+    "Crédito Vale Transporte",
+    "BENEFÍCIOS"
+   ],
+   [
+    "Outros Benefícios",
+    "BENEFÍCIOS"
+   ],
+   [
+    "Metas de Curto Prazo",
+    "POUPANÇA E INVESTIMENTOS"
+   ],
+   [
+    "Reserva de Emergência",
+    "POUPANÇA E INVESTIMENTOS"
+   ],
+   [
+    "Metas de Médio Prazo",
+    "POUPANÇA E INVESTIMENTOS"
+   ],
+   [
+    "Aposentadoria / Longo Prazo",
+    "POUPANÇA E INVESTIMENTOS"
+   ],
+   [
+    "Outros Investimentos",
+    "POUPANÇA E INVESTIMENTOS"
+   ],
+   [
+    "Condomínio",
+    "HABITAÇÃO"
+   ],
+   [
+    "IPTU",
+    "HABITAÇÃO"
+   ],
+   [
+    "Conta de Água",
+    "HABITAÇÃO"
+   ],
+   [
+    "Conta de Energia",
+    "HABITAÇÃO"
+   ],
+   [
+    "Seguro Residencial",
+    "HABITAÇÃO"
+   ],
+   [
+    "Conta de Gás",
+    "HABITAÇÃO"
+   ],
+   [
+    "Celular + TV + Internet",
+    "HABITAÇÃO"
+   ],
+   [
+    "Celular",
+    "HABITAÇÃO"
+   ],
+   [
+    "Assinaturas (Streaming, Nuvem, Apps)",
+    "HABITAÇÃO"
+   ],
+   [
+    "Supermercado",
+    "HABITAÇÃO"
+   ],
+   [
+    "Feira",
+    "HABITAÇÃO"
+   ],
+   [
+    "Pets",
+    "HABITAÇÃO"
+   ],
+   [
+    "Faxineira",
+    "HABITAÇÃO"
+   ],
+   [
+    "Financiamento",
+    "DÍVIDAS"
+   ],
+   [
+    "Cheque Especial",
+    "DÍVIDAS"
+   ],
+   [
+    "Empréstimo Consignado",
+    "DÍVIDAS"
+   ],
+   [
+    "Cartão de Crédito em Atraso",
+    "DÍVIDAS"
+   ],
+   [
+    "Tributos Atrasados",
+    "DÍVIDAS"
+   ],
+   [
+    "Outras Dívidas",
+    "DÍVIDAS"
+   ],
+   [
+    "Plano de Saúde",
+    "SAÚDE"
+   ],
+   [
+    "Médicos e Terapeutas",
+    "SAÚDE"
+   ],
+   [
+    "Dentista",
+    "SAÚDE"
+   ],
+   [
+    "Farmácia",
+    "SAÚDE"
+   ],
+   [
+    "Outros (Saúde)",
+    "SAÚDE"
+   ],
+   [
+    "Licenciamento",
+    "TRANSPORTE"
+   ],
+   [
+    "IPVA + Seguro Obrigatório",
+    "TRANSPORTE"
+   ],
+   [
+    "Seguro do Carro",
+    "TRANSPORTE"
+   ],
+   [
+    "Combustível",
+    "TRANSPORTE"
+   ],
+   [
+    "Estacionamentos",
+    "TRANSPORTE"
+   ],
+   [
+    "Lavagens",
+    "TRANSPORTE"
+   ],
+   [
+    "Mecânico / Revisão",
+    "TRANSPORTE"
+   ],
+   [
+    "Multas",
+    "TRANSPORTE"
+   ],
+   [
+    "Pedágios + Tag",
+    "TRANSPORTE"
+   ],
+   [
+    "Uber / 99",
+    "TRANSPORTE"
+   ],
+   [
+    "Apps de Carro",
+    "TRANSPORTE"
+   ],
+   [
+    "Ônibus / Metrô",
+    "TRANSPORTE"
+   ],
+   [
+    "Pós-Graduação",
+    "DESPESAS PESSOAIS"
+   ],
+   [
+    "Cursos e Desenvolvimento",
+    "DESPESAS PESSOAIS"
+   ],
+   [
+    "Higiene Pessoal (unha, depilação etc.)",
+    "DESPESAS PESSOAIS"
+   ],
+   [
+    "Cosméticos",
+    "DESPESAS PESSOAIS"
+   ],
+   [
+    "Cabeleireiro",
+    "DESPESAS PESSOAIS"
+   ],
+   [
+    "Vestuário",
+    "DESPESAS PESSOAIS"
+   ],
+   [
+    "Academia",
+    "DESPESAS PESSOAIS"
+   ],
+   [
+    "Seguro de Vida",
+    "DESPESAS PESSOAIS"
+   ],
+   [
+    "Outros (Pessoais)",
+    "DESPESAS PESSOAIS"
+   ],
+   [
+    "Cursos Extracurriculares",
+    "EDUCAÇÃO"
+   ],
+   [
+    "Livros",
+    "EDUCAÇÃO"
+   ],
+   [
+    "Outros (Educação)",
+    "EDUCAÇÃO"
+   ],
+   [
+    "Restaurantes",
+    "LAZER"
+   ],
+   [
+    "iFood / Delivery",
+    "LAZER"
+   ],
+   [
+    "Cafés, Bares e Boates",
+    "LAZER"
+   ],
+   [
+    "Livraria, Jornais e Revistas",
+    "LAZER"
+   ],
+   [
+    "Spotify, Música e Outros",
+    "LAZER"
+   ],
+   [
+    "Passeios",
+    "LAZER"
+   ],
+   [
+    "Outros (Lazer)",
+    "LAZER"
+   ],
+   [
+    "Tarifas Bancárias",
+    "OUTROS"
+   ],
+   [
+    "Ajuda aos Pais",
+    "OUTROS"
+   ],
+   [
+    "Compras Diversas",
+    "OUTROS"
+   ],
+   [
+    "Doações e Dízimos",
+    "OUTROS"
+   ],
+   [
+    "Extras Diários",
+    "OUTROS"
+   ],
+   [
+    "Manutenção e Reparos",
+    "OUTROS"
+   ],
+   [
+    "Médicos e Terapeutas Esporádicos",
+    "OUTROS"
+   ],
+   [
+    "Remédios",
+    "OUTROS"
+   ],
+   [
+    "Dedetização",
+    "OUTROS"
+   ],
+   [
+    "Presente de Natal",
+    "OUTROS"
+   ],
+   [
+    "Presentes do Mês",
+    "OUTROS"
+   ],
+   [
+    "Utilidades Domésticas e Decoração",
+    "OUTROS"
+   ],
+   [
+    "Manutenção do Veículo",
+    "OUTROS"
+   ],
+   [
+    "Outros (Gerais)",
+    "OUTROS"
+   ],
+   [
+    "Escola / Mensalidade",
+    "EDUCAÇÃO"
+   ]
+  ],
+  "kw": [
+   [
+    "Restaurante / Lanchonete / Bar",
+    "Restaurantes"
+   ],
+   [
+    "Supermercados",
+    "Supermercado"
+   ],
+   [
+    "Relacionados a Automotivo",
+    "Combustível"
+   ],
+   [
+    "Transporte",
+    "Uber / 99"
+   ],
+   [
+    "Assistência médica e odontológica",
+    "Farmácia"
+   ],
+   [
+    "Vestuário",
+    "Vestuário"
+   ],
+   [
+    "Especialidade varejo",
+    "Compras Diversas"
+   ],
+   [
+    "Empresa para empresa",
+    "Compras Diversas"
+   ],
+   [
+    "Departamento / Desconto",
+    "Compras Diversas"
+   ],
+   [
+    "Hotel",
+    "Passeios"
+   ],
+   [
+    "Entretenimento",
+    "Passeios"
+   ],
+   [
+    "Educação",
+    "Cursos Extracurriculares"
+   ],
+   [
+    "AMAZON",
+    "Compras Diversas"
+   ],
+   [
+    "LANCHE",
+    "Restaurantes"
+   ],
+   [
+    "SORV",
+    "Restaurantes"
+   ],
+   [
+    "ASSAI",
+    "Supermercado"
+   ],
+   [
+    "ATACADAO",
+    "Supermercado"
+   ],
+   [
+    "GUANABARA",
+    "Supermercado"
+   ],
+   [
+    "PREZUNIC",
+    "Supermercado"
+   ],
+   [
+    "HORTIFRUTI",
+    "Feira"
+   ],
+   [
+    "POSTO",
+    "Combustível"
+   ],
+   [
+    "SHELL",
+    "Combustível"
+   ],
+   [
+    "IPIRANGA",
+    "Combustível"
+   ],
+   [
+    "PETROBRAS",
+    "Combustível"
+   ],
+   [
+    "ESTACIONA",
+    "Estacionamentos"
+   ],
+   [
+    "PEDAGIO",
+    "Pedágios + Tag"
+   ],
+   [
+    "SEM PARAR",
+    "Pedágios + Tag"
+   ],
+   [
+    "UBER",
+    "Uber / 99"
+   ],
+   [
+    "99APP",
+    "Uber / 99"
+   ],
+   [
+    "IFOOD",
+    "iFood / Delivery"
+   ],
+   [
+    "RAPPI",
+    "iFood / Delivery"
+   ],
+   [
+    "CANVA",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "NETFLIX",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "SPOTIFY",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "DISNEY",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "AMAZON PRIME",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "OPENAI",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "GOOGLE ONE",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "APPLE.COM",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "DROGA",
+    "Farmácia"
+   ],
+   [
+    "FARM",
+    "Farmácia"
+   ],
+   [
+    "PACHECO",
+    "Farmácia"
+   ],
+   [
+    "OTICA",
+    "Outros (Saúde)"
+   ],
+   [
+    "SMARTFIT",
+    "Academia"
+   ],
+   [
+    "ACADEMIA",
+    "Academia"
+   ],
+   [
+    "PETZ",
+    "Pets"
+   ],
+   [
+    "COBASI",
+    "Pets"
+   ],
+   [
+    "MERCADOLIVRE",
+    "Compras Diversas"
+   ],
+   [
+    "SHOPEE",
+    "Compras Diversas"
+   ],
+   [
+    "AMAZONPRIME",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "GOOGLE",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "CLAUDE",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "ANTHROPIC",
+    "Assinaturas (Streaming, Nuvem, Apps)"
+   ],
+   [
+    "VIVO",
+    "Celular"
+   ],
+   [
+    "RAIA",
+    "Farmácia"
+   ],
+   [
+    "RDSAUDE",
+    "Farmácia"
+   ],
+   [
+    "99 RIDE",
+    "Uber / 99"
+   ],
+   [
+    "99FOOD",
+    "iFood / Delivery"
+   ],
+   [
+    "KABUM",
+    "Compras Diversas"
+   ],
+   [
+    "IOF",
+    "Tarifas Bancárias"
+   ],
+   [
+    "MELIMAIS",
+    "Spotify, Música e Outros"
+   ],
+   [
+    "MP*MELI",
+    "Spotify, Música e Outros"
+   ]
+  ]
+ },
+ "seed": {
+  "arquivos": [],
+  "manuais": []
+ },
+ "cards": {}
+}
