@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.0";
+const VERSAO="2.1";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -236,6 +236,9 @@ async function openJson(f){
 
 // ---------------- items ----------------
 function cardName(key){ const c=state.cartoes[key]||{}; if(c.alias) return c.alias; if(!String(key).includes("|")) return key; const [b,f]=key.split("|"); return b+(f?" "+f:""); }
+// cartão = chave "Banco|final"; lançamento manual pago com cartão conta na fatura dele
+const isCardKey=k=>String(k||"").includes("|");
+const isCardItem=i=>i.kind==="cartao" || (i.kind==="manual" && isCardKey(i.cardKey) && i.tipo!=="Entrada");
 function catColor(cat){ const i=cfg.cats.findIndex(c=>c.nome===cat); return PALETTE[(i<0?11:i)%PALETTE.length]; }
 let ITEMS=[], INFO=[];
 function build(){
@@ -253,6 +256,8 @@ function build(){
     const d=new Date(m.date+"T12:00:00"), d0=new Date(d.getFullYear(),d.getMonth(),d.getDate());
     items.push({id:m.id, kind:"manual", date:d0, desc:m.desc, val:+m.val, tipo:m.tipo||"Saída", cat:m.cat||"OUTROS", sub:m.sub||"", meio:m.meio||"Pix",
       cardKey:m.meio||"Pix", n:1, N:Math.max(1,+m.parc||1), parcData:"S", ign:false, origem:m.origem});
+    // compra antiga lançada pela parcela atual: a parcela pAt cai na fatura do mês mesP
+    const it=items[items.length-1]; if(+m.pAt>1 && m.mesP!=null){ it.n=Math.min(+m.pAt,it.N); it.mFat=+m.mesP; }
   }
   items.forEach(it=>{ const e=state.edicoes[it.id]; if(e&&e.card) it.cardKey=e.card; });
   computeMonths(items, state.cartoes);
@@ -261,7 +266,7 @@ function build(){
     if(e.mes!=null&&e.mes!==""){ const sp=it.mEnd-it.m; it.m=+e.mes; it.mEnd=it.m+sp; } it.edited=true;
     it.catEd=!!e.cat; it.mesEd=e.mes!=null&&e.mes!==""; it.naoEst=!!e.naoEst; });
   // cartão pago por outra pessoa: nada dele entra na sua conta
-  items.forEach(it=>{ const c=it.kind==="cartao" && state.cartoes[it.cardKey]; if(c && c.terceiro && !it.ign){ it.ign=true; it.terc=true; } });
+  items.forEach(it=>{ const c=isCardItem(it) && state.cartoes[it.cardKey]; if(c && c.terceiro && !it.ign){ it.ign=true; it.terc=true; } });
   // estornos: compra devolvida e o estorno ficam zerados
   matchEstornos(items);
   ITEMS=items;
@@ -371,7 +376,7 @@ function rResumo(){
   const m=selMonth, cur=ITEMS.filter(i=>inM(i,m));
   const ins=cur.filter(i=>!isOut(i)).reduce((s,i)=>s+i.val,0), outs=cur.filter(isOut).reduce((s,i)=>s+i.val,0);
   $("kIn").textContent=BRL.format(ins); $("kOut").textContent=BRL.format(outs);
-  const cards=cur.filter(i=>isOut(i)&&i.kind==="cartao").reduce((s,i)=>s+i.val,0);
+  const cards=cur.filter(i=>isOut(i)&&isCardItem(i)).reduce((s,i)=>s+i.val,0);
   $("kOutSub").textContent=`${BRL.format(cards)} em cartões · ${BRL.format(outs-cards)} em Pix e boletos`;
   const bal=ins-outs; $("kBal").textContent=BRL.format(bal); $("kBal").className="val "+(bal<0?"out":"in");
   // tudo o que já está comprometido nos meses seguintes (parcelas de cartão e lançamentos parcelados)
@@ -392,7 +397,7 @@ function rResumo(){
   $("rDonut").innerHTML=donutSVG(cats, outs);
   $("rDonut").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ selCat=b.dataset.k; go("analise"); });
   mesesChart(m);
-  const pay=group(cur.filter(isOut), i=>i.kind==="cartao"?"c:"+i.cardKey:"m:"+i.meio, i=>i.kind==="cartao"?cardName(i.cardKey):i.meio);
+  const pay=group(cur.filter(isOut), i=>isCardItem(i)?"c:"+i.cardKey:"m:"+i.meio, i=>isCardItem(i)?cardName(i.cardKey):i.meio);
   $("rPay").innerHTML=barsHTML(pay, outs);
   const fut=[]; for(let k=1;k<=3;k++){ const v=ITEMS.filter(i=>inM(i,m+k)&&isOut(i)).reduce((s,i)=>s+i.val,0); fut.push({k:"f"+k,label:fmtMLong(m+k),v}); }
   $("rFut").innerHTML=barsHTML(fut.filter(f=>f.v), 0, {empty:"Nada comprometido nos próximos meses."});
@@ -464,7 +469,21 @@ function mesesChart(sel){
 }
 
 // ---------------- cartões: ajustes + alertas ----------------
-function cardKeys(){ return [...new Set(ITEMS.filter(i=>i.kind==="cartao"&&(!i.ign||i.terc)).map(i=>i.cardKey))]; }
+function cardKeys(){ const s=new Set(ITEMS.filter(i=>isCardItem(i)&&(!i.ign||i.terc)).map(i=>i.cardKey));
+  Object.keys(state.cartoes).forEach(k=>{ if(state.cartoes[k]&&state.cartoes[k].manual) s.add(k); }); return [...s]; }
+// cartão adicionado à mão (ex.: fatura em PDF que não dá para ler); reaproveita o que já existe com o mesmo nome e final
+const semAc=t=>String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+function novoCartao(banco, fin, fech, venc){
+  banco=String(banco||"").trim(); fin=String(fin||"").replace(/\D/g,"").slice(-4); if(!banco) return null;
+  const dia=v=>{ v=parseInt(v,10); return v? Math.min(31,Math.max(1,v)) : ""; };
+  const todos=new Set(Object.keys(state.cartoes).concat(cardKeys()));
+  let key=[...todos].find(k=>{ const [b,f]=k.split("|"); return isCardKey(k) && semAc(b)===semAc(banco) && (f||"")===fin; }) || (banco+"|"+fin);
+  const novo=!state.cartoes[key]; const c=state.cartoes[key]=state.cartoes[key]||{};
+  if(novo || !ITEMS.some(i=>i.kind==="cartao"&&i.cardKey===key)) c.manual=true;
+  if(dia(fech)) c.fech=dia(fech); if(dia(venc)) c.venc=dia(venc);
+  if(selCards) selCards.add(key);
+  return key;
+}
 function cardMissing(k){ const c=state.cartoes[k]||{}; const f=[]; if(c.terceiro) return f; if(!c.fech) f.push("fechamento"); if(!c.venc) f.push("vencimento"); return f; }
 const inpS='font:inherit;padding:5px 7px;border:1px solid var(--line);border-radius:7px';
 function fileLabel(n){ return String(n).split("/").pop(); }
@@ -480,9 +499,11 @@ function cardCfgHTML(keys, withStatus){
       <td class="r" data-l="Fecha dia"><input class="num${c.fech?"":" need"}" data-k="${esc(k)}" data-f="fech" inputmode="numeric" value="${esc(c.fech||"")}" placeholder="dia" style="width:3.6rem;${inpS}" aria-label="Fecha dia"></td>
       <td class="r" data-l="Vence dia"><input class="num${c.venc?"":" need"}" data-k="${esc(k)}" data-f="venc" inputmode="numeric" value="${esc(c.venc||"")}" placeholder="dia" style="width:3.6rem;${inpS}" aria-label="Vence dia"></td>
       <td data-l="Quem paga"><select data-k="${esc(k)}" data-f="terceiro" aria-label="Quem paga este cartão" style="${inpS}"><option value=""${c.terceiro?"":" selected"}>Eu</option><option value="1"${c.terceiro?" selected":""}>Outra pessoa</option></select></td>
-      ${withStatus?`<td data-l="Situação">${c.terceiro?'<span class="tag">fora da conta</span>':miss.length?`<span class="tag warn">falta ${miss.join(" e ")}</span>`:`<span class="tag in">ok</span>`}</td>`:""}</tr>${filesRowHTML(k, withStatus?6:5)}`; }).join("")||`<tr><td colspan="5" class="empty">Nenhum cartão ainda. Eles aparecem quando você carrega uma fatura.</td></tr>`;
+      ${withStatus?`<td data-l="Situação">${c.terceiro?'<span class="tag">fora da conta</span>':miss.length?`<span class="tag warn">falta ${miss.join(" e ")}</span>`:`<span class="tag in">ok</span>`}${c.manual?' <span class="tag man">adicionado à mão</span>':""}${c.manual&&!ITEMS.some(i=>isCardItem(i)&&i.cardKey===k)?` <button type="button" class="ghost sm" data-rmk="${esc(k)}">Remover</button>`:""}</td>`:""}</tr>${filesRowHTML(k, withStatus?6:5)}`; }).join("")||`<tr><td colspan="5" class="empty">Nenhum cartão ainda. Eles aparecem quando você carrega uma fatura, ou adicione um à mão.</td></tr>`;
 }
 function bindCardCfg(root){
+  root.querySelectorAll("[data-rmk]").forEach(b=>b.onclick=()=>{ const k=b.dataset.rmk, old=state.cartoes[k]; delete state.cartoes[k]; save(); render();
+    toast(`Cartão ${esc(cardName(k))} removido.`,[{label:"Desfazer",run:()=>{ state.cartoes[k]=old; save(); render(); }}]); });
   root.querySelectorAll("input[data-af]").forEach(inp=>inp.onchange=()=>{ const n=inp.dataset.af, v=inp.value.replace(/\D/g,"").slice(-4); if(!v) return;
     state.arqFinal=Object.assign(state.arqFinal||{},{[n]:v});
     const it=ITEMS.find(i=>i.kind==="cartao"&&i.file===n); if(it){ const oldK=it.bank+"|", newK=it.bank+"|"+v; if(state.cartoes[oldK] && !state.cartoes[newK]){ const o=state.cartoes[oldK]; state.cartoes[newK]={fech:o.fech||"",venc:o.venc||""}; } }
@@ -639,19 +660,20 @@ function rCartoes(){
   const m=selMonth; const keys=cardKeys();
   if(!selCards) selCards=new Set(keys);
   const allOn=keys.every(k=>selCards.has(k));
-  const sumK=k=>ITEMS.filter(i=>i.kind==="cartao"&&i.cardKey===k&&inM(i,m)).reduce((s,i)=>s+i.val,0);
+  const sumK=k=>ITEMS.filter(i=>isCardItem(i)&&i.cardKey===k&&inM(i,m)).reduce((s,i)=>s+i.val,0);
   $("cChips").innerHTML=`<button type="button" class="chip" data-all="1" aria-pressed="${allOn}">Todos</button>`+keys.map(k=>`<button type="button" class="chip${(state.cartoes[k]||{}).terceiro?" terc":""}" data-k="${esc(k)}" aria-pressed="${selCards.has(k)}">${esc(cardName(k))}<span class="num">${(state.cartoes[k]||{}).terceiro?"outra pessoa":BRL.format(sumK(k))}</span></button>`).join("");
   $("cChips").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ if(b.dataset.all){ selCards=new Set(allOn?[]:keys); } else { const k=b.dataset.k; selCards.has(k)?selCards.delete(k):selCards.add(k); } render(); });
-  const list=ITEMS.filter(i=>i.kind==="cartao"&&selCards.has(i.cardKey)&&inM(i,m));
+  const list=ITEMS.filter(i=>isCardItem(i)&&selCards.has(i.cardKey)&&inM(i,m));
   const tot=list.reduce((s,i)=>s+i.val,0);
   $("cTot").textContent=BRL.format(tot); $("cTotSub").textContent=selCards.size===keys.length?"todos os cartões":[...selCards].map(cardName).join(", ")||"nenhum cartão escolhido";
   $("cQtd").textContent=list.filter(i=>i.m===m && i.val>0).length;
   $("cParc").textContent=BRL.format(list.filter(i=>i.N>1).reduce((s,i)=>s+i.val,0));
-  $("cNext").textContent=BRL.format(ITEMS.filter(i=>i.kind==="cartao"&&selCards.has(i.cardKey)&&inM(i,m+1)).reduce((s,i)=>s+i.val,0));
+  $("cNext").textContent=BRL.format(ITEMS.filter(i=>isCardItem(i)&&selCards.has(i.cardKey)&&inM(i,m+1)).reduce((s,i)=>s+i.val,0));
   $("cCats").innerHTML=barsHTML(group(list,i=>i.cat,null,i=>catColor(i.cat)), tot);
   $("cCfg").innerHTML=cardCfgHTML(keys,false); bindCardCfg($("cCfg"));
   const q=$("cQ").value.trim().toLowerCase();
-  const base=ITEMS.filter(i=>i.kind==="cartao"&&selCards.has(i.cardKey)&&(i.ign? i.m===m : inM(i,m)));
+  caRender(keys);
+  const base=ITEMS.filter(i=>isCardItem(i)&&selCards.has(i.cardKey)&&(i.ign? i.m===m : inM(i,m)));
   const nRev=base.filter(needsReview).length; $("cRevN").textContent=nRev; if(revMode&&!nRev) revMode=false;
   const nEst=base.filter(i=>i.est).length; $("cEstN").textContent=nEst; $("cEst").hidden=!nEst; if(estMode&&!nEst) estMode=false;
   $("cAll").setAttribute("aria-pressed",!revMode&&!estMode); $("cRev").setAttribute("aria-pressed",revMode); $("cEst").setAttribute("aria-pressed",estMode);
@@ -665,14 +687,17 @@ function rCartoes(){
       : i.est==="sem"? `<span class="tag est" title="Não achei a compra devolvida nas faturas da pasta. O valor continua abatendo os gastos.">↩ estorno sem compra</span>` : "";
     const naoEst= i.est? `<button type="button" class="ghost sm" data-ne="${esc(i.id)}" title="Não é estorno: contar normalmente">Não é estorno</button>` : (state.edicoes[i.id]&&state.edicoes[i.id].naoEst)? `<button type="button" class="ghost sm" data-se="${esc(i.id)}" title="Voltar a procurar o estorno desta compra">É estorno</button>` : "";
     const dot= i.ign? "" : i.edited? '<span class="dot info" title="alterado por você"></span>' : i.how==="regra"? `<span class="dot learn" title="aprendido: contém “${esc(i.rk)}”"></span>` : (i.how==="palpite"||i.how==="padrao")? `<span class="dot warn" title="${i.how==="palpite"?"palpite por lojas parecidas":"sem regra"}"></span>` : "";
+    const man= i.kind==="manual"? `<span class="tag man" title="Lançada por você">à mão</span><button type="button" class="ghost sm" data-mdel="${esc(i.id)}" title="Excluir este lançamento e todas as parcelas">Excluir</button>` : "";
     return `<tr class="${i.ign?"ign":proj?"proj":""}"><td class="stk"><div class="dsc" title="${esc(i.desc)}">${dot}<span class="t">${esc(i.desc)}</span></div></td>
     <td class="v">${i.ign? fmtNum(i.val) : `<input class="num${i.val!==i.val0?" part":""}" data-v="${esc(i.id)}" inputmode="decimal" value="${fmtNum(i.val)}" title="${i.val!==i.val0?`Sua parte. Valor na fatura: ${fmtNum(i.val0)}`:"Toque para mudar o valor (ex.: só a sua parte)"}" aria-label="Valor que você paga">`}</td>
-    <td>${i.terc?'<span class="sm">cartão de outra pessoa</span>':payIgn?'<span class="sm">pagamento da fatura</span>':i.est==="total"?`<div class="cs">${estTag}${naoEst}</div>`:`<div class="cs">${estTag}${catSubSelect(i)}${naoEst}${needsReview(i)?`<button type="button" class="okb" data-ok="${esc(i.id)}" title="A categoria está certa: guardar como regra" aria-label="Confirmar categoria">✓</button>`:""}</div>`}</td>
+    <td>${i.terc?'<span class="sm">cartão de outra pessoa</span>':payIgn?'<span class="sm">pagamento da fatura</span>':i.est==="total"?`<div class="cs">${estTag}${naoEst}</div>`:`<div class="cs">${estTag}${catSubSelect(i)}${man}${naoEst}${needsReview(i)?`<button type="button" class="okb" data-ok="${esc(i.id)}" title="A categoria está certa: guardar como regra" aria-label="Confirmar categoria">✓</button>`:""}</div>`}</td>
     <td class="ck"><input type="checkbox" data-ck="${esc(i.id)}" ${i.ign?"":"checked"} ${payIgn||i.terc||i.est==="total"?"disabled":""} aria-label="Eu pago esta compra"></td>
     <td class="sm num">${fmtD(i.date)}</td><td class="sm" title="${esc(i.file||"")}">${esc(cardName(i.cardKey))}${i.cardKey.endsWith("|")&&i.file?` <span class="fn">· ${esc(fileLabel(i.file))}</span>`:""}</td><td class="sm num">${i.N>1?(i.n+(m-i.m))+"/"+i.N:"—"}</td></tr>`; }).join("")||`<tr><td colspan="7" class="empty">${revMode?"Nada para revisar.":estMode?"Nenhum estorno.":"Nenhuma compra para os cartões escolhidos neste mês."}</td></tr>`;
   if(nZer) $("cTx").insertAdjacentHTML("beforeend",`<tr class="zerinfo"><td colspan="7"><button type="button" class="linkbtn" id="cZerShow">↩ ${nZer} lançamento(s) zerados por estorno escondidos · ver</button></td></tr>`);
   if($("cZerShow")) $("cZerShow").onclick=()=>{ estMode=true; revMode=false; rCartoes(); };
   bindCatSelects($("cTx"));
+  $("cTx").querySelectorAll("[data-mdel]").forEach(b=>b.onclick=()=>{ const id=b.dataset.mdel, rec=state.manuais.find(x=>x.id===id); if(!rec) return;
+    state.manuais=state.manuais.filter(x=>x.id!==id); save(); render(); toast(`Excluído: ${esc(rec.desc)}.`,[{label:"Desfazer",run:()=>{ state.manuais.push(rec); save(); render(); }}]); });
   $("cTx").querySelectorAll("[data-ne],[data-se]").forEach(b=>b.onclick=()=>{ const id=b.dataset.ne||b.dataset.se, it=ITEMS.find(x=>x.id===id); if(!it) return;
     const ids=b.dataset.ne? ITEMS.filter(x=>x.estGrp&&x.estGrp===it.estGrp).map(x=>x.id) : [id]; if(!ids.length) ids.push(id);
     ids.forEach(k=>{ state.edicoes[k]=state.edicoes[k]||{}; if(b.dataset.ne) state.edicoes[k].naoEst=true; else delete state.edicoes[k].naoEst; });
@@ -688,6 +713,57 @@ $("cQ").oninput=()=>rCartoes();
 $("cAll").onclick=()=>{ revMode=false; estMode=false; rCartoes(); };
 $("cRev").onclick=()=>{ revMode=true; estMode=false; rCartoes(); };
 $("cEst").onclick=()=>{ estMode=true; revMode=false; rCartoes(); };
+// ---- lançar compra no cartão (cartão sem fatura legível, compras antigas parceladas) ----
+let caSel=null;
+function caRender(keys){
+  const sel=$("caCard"), cur=caSel && (keys.includes(caSel)||caSel==="__novo")? caSel : (keys.find(k=>state.cartoes[k]&&state.cartoes[k].manual)||keys[0]||"__novo");
+  sel.innerHTML=keys.map(k=>`<option value="${esc(k)}">${esc(cardName(k))}</option>`).join("")+`<option value="__novo">+ Novo cartão…</option>`; sel.value=cur; caSel=cur;
+  const cs=$("caCs"), cv=cs.value; cs.innerHTML=`<option value="">automática pela descrição</option>`+catOptions(null,null,false); cs.value=cv||"";
+  if(!$("caDate").value) $("caDate").value=isoD(new Date());
+  caPrev();
+}
+function caDados(){
+  const N=Math.max(1,Math.min(72,parseInt($("caParc").value,10)||1)), pat=parseInt($("caPat").value,10)||0;
+  const v=parseValue($("caVal").value,false), val= isNaN(v)||v<=0? 0 : Math.round(($("caValTipo").value==="t"? Math.abs(v)/N : Math.abs(v))*100)/100;
+  return {N, pat, val, total:isNaN(v)?0:Math.abs(v)};
+}
+function caPrev(){
+  const novo=$("caCard").value==="__novo"; $("caNovo").hidden=!novo;
+  $("caPatHint").textContent=`nesta fatura (${fmtM(selMonth)})`;
+  const {N,pat,val}=caDados(), d=$("caDate").value; let txt="";
+  if(pat>N) txt=`<span class="warn">A parcela atual (${pat}) não pode ser maior que o total de parcelas (${N}).</span>`;
+  else if(val>0 && d){
+    let m0;
+    if(pat>1) m0=selMonth-(pat-1);
+    else { const k=novo? "__tmp" : $("caCard").value, cc=novo? {[k]:{fech:+$("caFech").value||0,venc:+$("caVenc").value||0}} : state.cartoes;
+      const it={cardKey:k,date:new Date(d+"T12:00:00"),n:1,N:1,parcData:"S",desc:"",val:0}; computeMonths([it],cc); m0=it.m; }
+    const ini= pat>1? selMonth : m0, fim=m0+N-1;
+    txt= N>1? `${N}x de <b>${BRL.format(val)}</b> · ${pat>1?`faltam ${N-pat+1} parcelas, `:""}de ${fmtM(ini)} até ${fmtM(fim)}` : `<b>${BRL.format(val)}</b> na fatura de ${fmtM(ini)}`;
+    if(!novo && cardMissing($("caCard").value).length) txt+=` · <span class="warn">preencha fechamento e vencimento do cartão para cair no mês certo</span>`;
+  }
+  $("caPrev").innerHTML=txt;
+}
+["caCard","caDate","caVal","caValTipo","caParc","caPat","caFech","caVenc"].forEach(id=>{ $(id).addEventListener("input",()=>{ if(id==="caCard") caSel=$("caCard").value; caPrev(); }); });
+$("cAdd").onsubmit=e=>{ e.preventDefault();
+  const {N,pat,val}=caDados(), desc=$("caDesc").value.trim(), date=$("caDate").value;
+  if(!desc||!date||!(val>0)){ toast("Preencha data, descrição e valor."); return; }
+  if(pat>N){ toast("A parcela atual não pode ser maior que o total de parcelas."); return; }
+  let key=$("caCard").value;
+  if(key==="__novo"){ key=novoCartao($("caBanco").value,$("caFin").value,$("caFech").value,$("caVenc").value); if(!key){ toast("Escreva o nome do cartão ou banco."); $("caBanco").focus(); return; } }
+  let cat, sub; const cs=$("caCs").value;
+  if(cs){ [cat,sub]=cs.split("||"); learnRule(desc,cat,sub); } else { const c=categorize(desc,"",cfg,state.regras); cat=c.cat; sub=c.sub; }
+  const rec={id:"m:"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), date, desc, tipo:"Saída", cat, sub:sub||"", meio:key, val, parc:N, origem:"manual"};
+  if(pat>1){ rec.pAt=pat; rec.mesP=selMonth; }
+  state.manuais.push(rec); if(state.seed) state.seed=false; if(selCards) selCards.add(key); caSel=key;
+  ["caDesc","caVal","caParc","caPat","caBanco","caFin","caFech","caVenc"].forEach(id=>$(id).value=""); $("caCs").value="";
+  save(); render();
+  toast(`Lançado em ${esc(cardName(key))}: ${esc(desc)}${N>1?`, ${N}x de ${BRL.format(val)}`:`, ${BRL.format(val)}`}.`,[{label:"Desfazer",run:()=>{ state.manuais=state.manuais.filter(x=>x.id!==rec.id); save(); render(); }}]);
+  setTimeout(()=>$("caDesc").focus(),30);
+};
+$("dNovo").onsubmit=e=>{ e.preventDefault();
+  const key=novoCartao($("dnBanco").value,$("dnFin").value,$("dnFech").value,$("dnVenc").value); if(!key) return;
+  ["dnBanco","dnFin","dnFech","dnVenc"].forEach(id=>$(id).value=""); caSel=key; save(); render();
+  toast(`Cartão ${esc(cardName(key))} pronto. Lance as compras em Cartões.`,[{label:"Ir para Cartões",run:()=>{ go("cartoes"); $("cAddBox").open=true; $("cAddBox").scrollIntoView({behavior:"smooth",block:"start"}); }}]); };
 // aviso de estornos do mês (Resumo e Cartões)
 function estAviso(){
   const bar=$("estBar"), m=selMonth;
@@ -746,7 +822,7 @@ function fillCatSelect(){
   fillSubSelect();
 }
 function fillSubSelect(){ const cur=$("lSub").value; const subs=subOptions($("lCat").value); $("lSub").innerHTML=(subs.length?subs:[""]).map(s=>`<option value="${esc(s)}">${esc(s||"—")}</option>`).join(""); if(subs.includes(cur)) $("lSub").value=cur; }
-function fillMeio(){ const cur=$("lMeio").value; const cards=[...new Set(ITEMS.filter(i=>i.kind==="cartao").map(i=>i.cardKey))];
+function fillMeio(){ const cur=$("lMeio").value; const cards=cardKeys();
   $("lMeio").innerHTML=DEFAULTS.meios.map(x=>`<option>${esc(x)}</option>`).join("")+(cards.length?`<optgroup label="Cartões">${cards.map(k=>`<option value="${esc(k)}">${esc(cardName(k))}</option>`).join("")}</optgroup>`:""); if(cur) $("lMeio").value=cur; }
 function setTipo(t){ lTipo=t; $("lOut").setAttribute("aria-pressed",t==="Saída"); $("lIn").setAttribute("aria-pressed",t==="Entrada"); fillCatSelect(); }
 $("lOut").onclick=()=>setTipo("Saída"); $("lIn").onclick=()=>setTipo("Entrada");
@@ -758,7 +834,7 @@ $("lDesc").oninput=()=>{ if(catTouched||lTipo!=="Saída"||editingId) return; con
 function resetForm(){ editingId=null; catTouched=false; if($("lHint")) $("lHint").textContent=""; $("lTitle").textContent="Novo lançamento"; $("lSave").textContent="Adicionar"; $("lCancel").hidden=true; $("lDel").hidden=true;
   $("lDesc").value=""; $("lVal").value=""; $("lParc").value=""; const t=new Date(); const inMonth=monthIndex(t)===selMonth; $("lDate").value=isoD(inMonth?t:new Date(Math.floor(selMonth/12),selMonth%12,1)); }
 let lDraft={};
-function meioOptions(sel){ const cards=[...new Set(ITEMS.filter(i=>i.kind==="cartao").map(i=>i.cardKey))]; const v=sel||"Pix";
+function meioOptions(sel){ const cards=cardKeys(); const v=sel||"Pix";
   return DEFAULTS.meios.map(x=>`<option${x===v?" selected":""}>${esc(x)}</option>`).join("")+(cards.length?`<optgroup label="Cartões">${cards.map(k=>`<option value="${esc(k)}"${k===v?" selected":""}>${esc(cardName(k))}</option>`).join("")}</optgroup>`:""); }
 function lRowHTML(r, isNew){
   const tipo=r.tipo||"Saída", ent=tipo==="Entrada";

@@ -52,6 +52,7 @@ Em ordem de pedido:
 21. **Revisão geral (v1.9)** — medido: o app redesenha qualquer aba em menos de 80 ms, então não havia lentidão real. Ajustes: linha de Entradas só nos meses com entrada (antes descia até zero); compras e estornos que se anularam ficam escondidos na lista "Todas" dos Cartões (linha "ver" leva ao filtro Estornos); explicação longa dos Cartões virou "Como corrigir e ensinar o leitor" recolhível; no celular, avisos mais compactos e nomes de categoria com mais espaço; barras da Análise mais finas; aviso quando o navegador não consegue salvar (memória cheia).
 
 22. **Gráfico mês a mês (v2.0)** — vira "Entradas e gastos mês a mês": entradas em barra verde ao lado dos gastos, valores escritos em cima das barras (no celular só no mês escolhido quando não cabe), mês escolhido destacado, linha de média só com 2+ meses de fatura, e o detalhe ao tocar mostra a diferença.
+23. **Cartão à mão e compras parceladas (v2.1)** — para cartão cuja fatura não dá para ler (ex.: PDF do Itaú). Em Cartões, quadro "+ Lançar compra no cartão": escolhe o cartão ou cria um novo (nome, final, fecha, vence), data, descrição, valor (total ou de cada parcela), parcelas e, para compra antiga, "parcela atual" (cai na fatura do mês escolhido e conta só as que faltam). Vira um lançamento manual com `meio` = chave do cartão; aparece em Cartões (fatura do mês, parcelas, próxima fatura), no Resumo e no orçamento comprometido. Dados › Cartões ganhou "+ Adicionar cartão à mão".
 
 ## Ideias que ficaram em aberto
 

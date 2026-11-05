@@ -47,6 +47,20 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     await page.evaluate(() => go("resumo"));
     ok(await page.evaluate(() => { const b = document.querySelector("#rCats [data-tog]"); const sub = b.parentElement.querySelector(".barrow.sub"); const antes = sub.offsetParent === null; b.click(); return antes && sub.offsetParent !== null; }), `${nome}: subcategorias começam fechadas e abrem ao tocar`);
     ok(await page.evaluate(() => /R\$/.test(document.getElementById("kCom").textContent)), `${nome}: card de orçamento comprometido`);
+    // cartão adicionado à mão + compra parcelada que entra nos meses seguintes
+    await page.evaluate(() => go("cartoes")); await page.click("#cAddBox > summary"); await page.waitForTimeout(100);
+    await page.selectOption("#caCard", "__novo");
+    await page.fill("#caBanco", "Banco Teste"); await page.fill("#caFin", "4321"); await page.fill("#caFech", "28"); await page.fill("#caVenc", "5");
+    await page.evaluate(() => { document.getElementById("caDate").value = "2026-03-10"; caPrev(); });
+    await page.fill("#caDesc", "Geladeira nova"); await page.fill("#caVal", "1.000,00"); await page.fill("#caParc", "10");
+    ok(await page.evaluate(() => /10x de .*100,00.*abr\/26 até jan\/27/i.test(document.getElementById("caPrev").textContent)), `${nome}: prévia das parcelas no cartão manual`);
+    await page.click("#caSave"); await page.waitForTimeout(150);
+    ok(await page.evaluate(() => { const it = ITEMS.find(i => i.desc === "Geladeira nova"); return it && it.cardKey === "Banco Teste|4321" && it.val === 100 && it.mEnd - it.m === 9 && cardKeys().includes("Banco Teste|4321"); }), `${nome}: compra parcelada lançada no cartão novo`);
+    ok(await page.evaluate(() => { const it = ITEMS.find(i => i.desc === "Geladeira nova"); selMonth = it.m + 1; render(); return /100,00/.test(document.getElementById("cNext").textContent) && [...document.querySelectorAll("#cTx tr")].some(tr => /Geladeira nova/.test(tr.textContent) && /2\/10/.test(tr.textContent)); }), `${nome}: parcela aparece na fatura e na próxima`);
+    await page.selectOption("#caCard", "Banco Teste|4321");
+    await page.fill("#caDesc", "Notebook antigo"); await page.fill("#caVal", "250"); await page.selectOption("#caValTipo", "p"); await page.fill("#caParc", "12"); await page.fill("#caPat", "5");
+    await page.click("#caSave"); await page.waitForTimeout(150);
+    ok(await page.evaluate(() => { const it = ITEMS.find(i => i.desc === "Notebook antigo"); return it && it.m === selMonth && it.n === 5 && it.mEnd === selMonth + 7 && it.val === 250; }), `${nome}: compra antiga pela parcela atual`);
     for (const t of ["resumo", "cartoes", "analise", "dados", "lancamentos"]) { await page.click(`[data-tab=${t}]`); await page.waitForTimeout(120); }
     await page.fill("#lTx tr.newrow [data-f=desc]", "Conta de luz"); await page.press("#lTx tr.newrow [data-f=desc]", "Tab");
     await page.fill("#lTx tr.newrow [data-f=val]", "120,00"); await page.press("#lTx tr.newrow [data-f=val]", "Tab"); await page.waitForTimeout(200);
