@@ -395,7 +395,6 @@ button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-rad
 .dw .mbar i{display:block;height:100%;background:var(--out);border-radius:6px;opacity:.75}
 /* modo oculto */
 button.eye{padding:8px 10px}
-@media (max-width:640px){ .top .wrap{position:relative} button.eye{position:absolute;top:8px;right:max(16px, env(safe-area-inset-right,0px))} }
 button.eye[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:#cfe7df}
 body.oculto .sheet input.num, body.oculto td.v input, body.oculto .mchart svg text, body.oculto .mtip .num, body.oculto #caVal{filter:blur(6px)}
 body.oculto .sheet input.num:focus, body.oculto #caVal:focus{filter:none}
@@ -507,6 +506,36 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
 .mtip{position:absolute;pointer-events:none;background:#fff;border:1px solid #e3e9e6;border-radius:10px;box-shadow:0 8px 24px rgba(31,42,39,.12);padding:8px 10px;font-size:.8rem;line-height:1.45;white-space:nowrap;z-index:3}
 .mtip b{font-family:var(--f-display)} .mtip .num{float:right;margin-left:14px}
 @media (max-width:640px){ .donutwrap{grid-template-columns:minmax(0,1fr)} .donut{margin:0 auto} .barrow.sub{padding-left:14px} }
+/* v2.8: celular mais compacto */
+.folder button .bi{display:none}
+@media (max-width:640px){
+  .top .wrap{display:grid;grid-template-columns:minmax(0,1fr);grid-auto-columns:auto;grid-auto-flow:column;column-gap:6px;row-gap:3px;align-items:center;padding-block:8px}
+  .folder{display:contents}
+  .brand{grid-column:1;grid-row:1;min-width:0}
+  .brand h1{font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .folder .pill{grid-column:1;grid-row:2;justify-self:start;max-width:100%;font-size:.72rem;padding:2px 9px}
+  .folder button{grid-row:1/3;width:38px;height:38px;padding:0;justify-content:center;border-radius:11px}
+  .folder button .bi{display:block}
+  .folder button .bl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  #bDir.sem{width:auto;padding:0 12px}
+  #bDir.sem .bl{position:static;width:auto;height:auto;overflow:visible;clip:auto;font-size:.84rem}
+  .monthbar{padding-block:8px 0}
+  .mnav button{width:34px;height:34px}
+  main.wrap,.view{gap:14px}
+  main.wrap{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .banner,.alertbar{flex-wrap:nowrap;padding:8px 10px 8px 12px;font-size:.82rem;line-height:1.35;border-radius:12px}
+  .banner > span,.alertbar > span:first-child{flex:1;min-width:0}
+  .banner button,.alertbar button{flex:none}
+  .tiles{gap:8px}
+  .tile{padding:11px 12px;gap:2px;border-radius:16px}
+  .tile .lab{font-size:.64rem;letter-spacing:.04em;line-height:1.25}
+  .tile .val{font-size:1.06rem}
+  .tile .sub{font-size:.72rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .tab{padding:6px 4px 4px}
+  .tab.add{width:52px;height:52px;margin:-20px 6px 6px}
+  .tab.add svg{width:24px;height:24px}
+  .toast{bottom:calc(78px + env(safe-area-inset-bottom,0px))}
+}
 </style>
 </head>
 <body>
@@ -571,11 +600,11 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
   <div class="brand"><h1>Leitor de Faturas <span class="ver" data-ver>v1.2</span></h1><span>Cartões, Pix e boletos num lugar só</span></div>
   <div class="folder">
     <span id="folderPill" class="pill"><span class="dot"></span><span id="folderTxt">Sem pasta conectada</span></span>
-    <button id="bDir" class="primary" type="button">Conectar pasta</button>
-    <button id="bRescan" type="button" hidden>Ler pasta de novo</button>
+    <button id="bDir" class="primary sem" type="button" title="Escolher a pasta das faturas"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="bl">Conectar pasta</span></button>
+    <button id="bRescan" type="button" hidden title="Ler pasta de novo" aria-label="Ler pasta de novo"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3.9M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9M20 20v-4h-4"/></svg><span class="bl">Ler pasta de novo</span></button>
     <button id="bEye" type="button" class="eye" aria-pressed="false" title="Esconder os valores" aria-label="Esconder ou mostrar os valores"><svg id="eyeOn" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg id="eyeOff" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="display:none"><path d="M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.8 0 3.4-.5 4.8-1.3M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
-    <button id="bLock" type="button" hidden title="Bloquear agora (pede o PIN para abrir)">🔒 Bloquear</button>
-    <button id="bInstall" type="button" hidden title="Instala o leitor como aplicativo neste computador">Instalar app</button>
+    <button id="bLock" type="button" hidden title="Bloquear agora (pede o PIN para abrir)" aria-label="Bloquear"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="bl">Bloquear</span></button>
+    <button id="bInstall" type="button" hidden title="Instala o leitor como aplicativo neste aparelho" aria-label="Instalar app"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="bl">Instalar app</span></button>
   </div>
 </div></div>
 <nav class="tabs" aria-label="Seções"><div class="wrap" role="tablist">
@@ -1078,7 +1107,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.7";
+const VERSAO="2.8";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1120,6 +1149,7 @@ function seedState(){ const s=blank(), sd=EMB.seed||{}; if(!(sd.arquivos||[]).le
 function lsGet(){ try{ const v=localStorage.getItem("lf3-state"); return v?JSON.parse(v):null; }catch(e){ return null; } }
 function lsSet(txt){ try{ localStorage.setItem("lf3-state",txt||JSON.stringify(state)); return true; }catch(e){ return false; } }
 function hhmm(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function bDirTxt(t,sem){ const b=$("bDir"); b.querySelector(".bl").textContent=t; b.setAttribute("aria-label",t); b.title=t; b.classList.toggle("sem",!!sem); }
 function setFolder(txt, cls){ $("folderTxt").textContent=txt; $("folderPill").className="pill"+(cls?" "+cls:""); }
 function save(){
   state.atualizado=new Date().toISOString(); const lsOk=lsSet();
@@ -1151,7 +1181,7 @@ async function idbSet(k,v){ try{ const db=await idb(); await new Promise((res,re
 async function idbGet(k){ try{ const db=await idb(); return await new Promise(res=>{ const t=db.transaction("kv").objectStore("kv").get(k); t.onsuccess=()=>res(t.result); t.onerror=()=>res(null); }); }catch(e){ return null; } }
 async function useDir(h){
   dirHandle=h; await idbSet("dir",h); loadStart("Abrindo a pasta…", h.name);
-  $("bDir").textContent="Trocar pasta"; $("bRescan").hidden=false; setFolder(h.name+" · lendo…","info");
+  bDirTxt("Trocar pasta",false); $("bRescan").hidden=false; setFolder(h.name+" · lendo…","info");
   let loaded=false;
   try{ const fh=await h.getFileHandle(JSON_NAME); const data=JSON.parse(await (await fh.getFile()).text()); if(data&&data.versao){ state=Object.assign(blank(),data); state.seed=false; loaded=true; } }catch(e){}
   if(!loaded){ // pasta nova: leva junto o que você já configurou neste navegador (sem as faturas de exemplo)
@@ -1339,7 +1369,8 @@ const isOut=i=>i.tipo!=="Entrada";
 function monthsAll(){ const s=new Set(); ITEMS.forEach(i=>{ if(i.ign) return; for(let m=i.m;m<=i.mEnd;m++) s.add(m); }); return [...s].sort((a,b)=>a-b); }
 
 // ---------------- render ----------------
-function showBanner(html, cls){ const b=$("banner"); b.innerHTML=`<span>${html}</span><button type="button" class="ghost" id="bClose">Fechar</button>`; b.className="banner"+(cls?" "+cls:""); b.hidden=false; $("bClose").onclick=()=>b.hidden=true; }
+let bannerT=0;
+function showBanner(html, cls){ const b=$("banner"); b.innerHTML=`<span>${html}</span><button type="button" class="ghost" id="bClose">Fechar</button>`; b.className="banner"+(cls?" "+cls:""); b.hidden=false; $("bClose").onclick=()=>b.hidden=true; clearTimeout(bannerT); if(cls==="ok") bannerT=setTimeout(()=>{ b.hidden=true; },8000); }
 function go(t){ if(t==="pasta") t="dados"; tab=t; if(location.hash!=="#"+t){ try{ history.replaceState(null,"","#"+t); }catch(e){ location.hash=t; } } render(); }
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ go(b.dataset.tab); if(b.dataset.tab==="lancamentos") setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },60); });
 window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1); if(["resumo","cartoes","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
@@ -2110,7 +2141,7 @@ document.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer?.fil
   const ls=lsGet(); state= ls&&ls.versao>=3 ? Object.assign(blank(),ls) : seedState(); applyCfg();
   render();
   if(FS_OK){ const saved=await idbGet("dir");
-    if(saved){ try{ const p=await saved.queryPermission({mode:"readwrite"}); savedName=saved.name||""; if(p==="granted") await useDir(saved); else { updateCover(); $("bDir").textContent="Reconectar pasta"; setFolder("Pasta "+saved.name+" · clique para reconectar","info"); } }catch(e){} } }
+    if(saved){ try{ const p=await saved.queryPermission({mode:"readwrite"}); savedName=saved.name||""; if(p==="granted") await useDir(saved); else { updateCover(); bDirTxt("Reconectar pasta",true); setFolder("Pasta "+saved.name+" · clique para reconectar","info"); } }catch(e){} } }
   else if(inFrame) setFolder("Dados só neste navegador");
 })();
 // ---- painel lateral: detalhe dos cards do Resumo ----

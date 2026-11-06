@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.7";
+const VERSAO="2.8";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -60,6 +60,7 @@ function seedState(){ const s=blank(), sd=EMB.seed||{}; if(!(sd.arquivos||[]).le
 function lsGet(){ try{ const v=localStorage.getItem("lf3-state"); return v?JSON.parse(v):null; }catch(e){ return null; } }
 function lsSet(txt){ try{ localStorage.setItem("lf3-state",txt||JSON.stringify(state)); return true; }catch(e){ return false; } }
 function hhmm(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function bDirTxt(t,sem){ const b=$("bDir"); b.querySelector(".bl").textContent=t; b.setAttribute("aria-label",t); b.title=t; b.classList.toggle("sem",!!sem); }
 function setFolder(txt, cls){ $("folderTxt").textContent=txt; $("folderPill").className="pill"+(cls?" "+cls:""); }
 function save(){
   state.atualizado=new Date().toISOString(); const lsOk=lsSet();
@@ -91,7 +92,7 @@ async function idbSet(k,v){ try{ const db=await idb(); await new Promise((res,re
 async function idbGet(k){ try{ const db=await idb(); return await new Promise(res=>{ const t=db.transaction("kv").objectStore("kv").get(k); t.onsuccess=()=>res(t.result); t.onerror=()=>res(null); }); }catch(e){ return null; } }
 async function useDir(h){
   dirHandle=h; await idbSet("dir",h); loadStart("Abrindo a pasta…", h.name);
-  $("bDir").textContent="Trocar pasta"; $("bRescan").hidden=false; setFolder(h.name+" · lendo…","info");
+  bDirTxt("Trocar pasta",false); $("bRescan").hidden=false; setFolder(h.name+" · lendo…","info");
   let loaded=false;
   try{ const fh=await h.getFileHandle(JSON_NAME); const data=JSON.parse(await (await fh.getFile()).text()); if(data&&data.versao){ state=Object.assign(blank(),data); state.seed=false; loaded=true; } }catch(e){}
   if(!loaded){ // pasta nova: leva junto o que você já configurou neste navegador (sem as faturas de exemplo)
@@ -279,7 +280,8 @@ const isOut=i=>i.tipo!=="Entrada";
 function monthsAll(){ const s=new Set(); ITEMS.forEach(i=>{ if(i.ign) return; for(let m=i.m;m<=i.mEnd;m++) s.add(m); }); return [...s].sort((a,b)=>a-b); }
 
 // ---------------- render ----------------
-function showBanner(html, cls){ const b=$("banner"); b.innerHTML=`<span>${html}</span><button type="button" class="ghost" id="bClose">Fechar</button>`; b.className="banner"+(cls?" "+cls:""); b.hidden=false; $("bClose").onclick=()=>b.hidden=true; }
+let bannerT=0;
+function showBanner(html, cls){ const b=$("banner"); b.innerHTML=`<span>${html}</span><button type="button" class="ghost" id="bClose">Fechar</button>`; b.className="banner"+(cls?" "+cls:""); b.hidden=false; $("bClose").onclick=()=>b.hidden=true; clearTimeout(bannerT); if(cls==="ok") bannerT=setTimeout(()=>{ b.hidden=true; },8000); }
 function go(t){ if(t==="pasta") t="dados"; tab=t; if(location.hash!=="#"+t){ try{ history.replaceState(null,"","#"+t); }catch(e){ location.hash=t; } } render(); }
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ go(b.dataset.tab); if(b.dataset.tab==="lancamentos") setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },60); });
 window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1); if(["resumo","cartoes","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
@@ -1050,7 +1052,7 @@ document.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer?.fil
   const ls=lsGet(); state= ls&&ls.versao>=3 ? Object.assign(blank(),ls) : seedState(); applyCfg();
   render();
   if(FS_OK){ const saved=await idbGet("dir");
-    if(saved){ try{ const p=await saved.queryPermission({mode:"readwrite"}); savedName=saved.name||""; if(p==="granted") await useDir(saved); else { updateCover(); $("bDir").textContent="Reconectar pasta"; setFolder("Pasta "+saved.name+" · clique para reconectar","info"); } }catch(e){} } }
+    if(saved){ try{ const p=await saved.queryPermission({mode:"readwrite"}); savedName=saved.name||""; if(p==="granted") await useDir(saved); else { updateCover(); bDirTxt("Reconectar pasta",true); setFolder("Pasta "+saved.name+" · clique para reconectar","info"); } }catch(e){} } }
   else if(inFrame) setFolder("Dados só neste navegador");
 })();
 // ---- painel lateral: detalhe dos cards do Resumo ----
