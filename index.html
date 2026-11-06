@@ -532,6 +532,7 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
   .tile .val{font-size:1.06rem}
   .tile .sub{font-size:.72rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .tab{padding:6px 4px 4px}
+  .tabs .wrap{overflow:visible}
   .tab.add{width:52px;height:52px;margin:-20px 6px 6px}
   .tab.add svg{width:24px;height:24px}
   .toast{bottom:calc(78px + env(safe-area-inset-bottom,0px))}
@@ -1107,7 +1108,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.9";
+const VERSAO="2.10";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
