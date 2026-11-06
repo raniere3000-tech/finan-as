@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.14";
+const VERSAO="2.15";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1174,6 +1174,11 @@ function rPin(){
 if(PIN_OK && pinGet()){ pinTrancar(); $("cover").hidden=true; } pinTopo();
 document.body.classList.toggle("oculto",oculto); $("bEye").setAttribute("aria-pressed",oculto); $("eyeOn").style.display= oculto? "none":""; $("eyeOff").style.display= oculto? "":"none";
 
+// celular com "Versão para computador" ligada: a tela fica do tamanho de um PC; avisa como desligar
+(function(){ try{
+  const lado=Math.min(screen.width||0, screen.height||0), toque=(navigator.maxTouchPoints||0)>0 || "ontouchstart" in window;
+  if(toque && lado>0 && lado<600 && window.innerWidth>=800) showBanner("O celular está mostrando a <b>versão para computador</b>. Para ver a tela do celular: no Chrome, toque em <b>⋮</b> e desmarque <b>Versão para computador</b>. Se estiver usando o app instalado, faça isso no Chrome com o site aberto e depois abra o app de novo.","info");
+}catch(e){} })();
 // ---- aplicativo instalável: guarda a página para abrir sem internet e oferece "Instalar app" ----
 (function(){
   const web=/^https?:$/.test(location.protocol) && !inFrame;
@@ -1187,6 +1192,6 @@ document.body.classList.toggle("oculto",oculto); $("bEye").setAttribute("aria-pr
   if(web && celular && !instalado()) b.hidden=false;
   window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); ev=e; b.hidden=false; });
   b.onclick=async()=>{ if(!ev){ instalarAjuda(); return; } ev.prompt(); const r=await ev.userChoice.catch(()=>null); ev=null;
-    if(r&&r.outcome==="accepted"){ b.hidden=true; toast(celular?"Pronto! Procure o ícone Finanças na tela inicial do celular.":"Pronto! O Leitor de Faturas está instalado. Abra pelo ícone na área de trabalho ou no menu Iniciar."); } };
+    if(r&&r.outcome==="accepted"){ b.hidden=true; toast(celular?"Pronto! Procure o ícone Finanças na tela inicial do celular.":"Pronto! O Finanças está instalado. Abra pelo ícone na área de trabalho ou no menu Iniciar."); } };
   window.addEventListener("appinstalled",()=>{ b.hidden=true; });
 })();
