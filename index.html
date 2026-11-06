@@ -1004,7 +1004,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.3";
+const VERSAO="2.4";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
