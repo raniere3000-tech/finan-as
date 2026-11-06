@@ -1135,7 +1135,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.19";
+const VERSAO="2.20";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1443,7 +1443,7 @@ function group(list, keyFn, labelFn, colorFn){
   const m=new Map(); list.forEach(i=>{ const k=keyFn(i); const o=m.get(k)||{k,label:labelFn?labelFn(i):k,v:0,n:0,c:colorFn?colorFn(i):null}; o.v+=i.val; o.n++; m.set(k,o); });
   return [...m.values()].sort((a,b)=>b.v-a.v);
 }
-function subOptions(cat){ return cfg.subs.filter(s=>s[1]===cat).map(s=>s[0]); }
+function subOptions(cat){ return cfg.subs.filter(s=>s[1]===cat).map(s=>s[0]).sort((a,b)=>a.localeCompare(b,"pt-BR",{sensitivity:"base"})); }
 function catOptions(selCat, selSub, entrada){
   let found=false; const opts=[];
   for(const c of cfg.cats.filter(c=> entrada? c.tipo!=="Despesa" : c.tipo==="Despesa")){ const subs=subOptions(c.nome);
