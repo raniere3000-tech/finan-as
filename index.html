@@ -1113,7 +1113,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.12";
+const VERSAO="2.13";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1334,6 +1334,8 @@ async function openJson(f){
 }
 
 // ---------------- items ----------------
+// compra parcelada lançada à mão (ou sem "Parcela n/N" no texto): mostra a parcela que cai no mês m
+function descM(i,m){ const d=String(i.desc||""); if(i.kind==="manual" && !(i.N>1) && isCardItem(i) && !/parcela\s*\d/i.test(d)) return d+" - Parcela 1/1"; if(!(i.N>1) || /parcela\s*\d|\d+\s*\/\s*\d+\s*$/i.test(d)) return d; return `${d} - Parcela ${Math.min(i.N,Math.max(1,i.n+(m-i.m)))}/${i.N}`; }
 function cardName(key){ const c=state.cartoes[key]||{}; if(c.alias) return c.alias; if(!String(key).includes("|")) return key; const [b,f]=key.split("|"); return b+(f?" "+f:""); }
 // cartão = chave "Banco|final"; lançamento manual pago com cartão conta na fatura dele
 const isCardKey=k=>String(k||"").includes("|");
@@ -1744,7 +1746,7 @@ function rMetas(m, cur, ins, outs){
     det.hidden=false;
     det.innerHTML=`<div class="gdh"><h3><i style="background:${GRP[g].cor}"></i>${GRP[g].nome} em ${fmtMLong(m)}</h3><span class="small muted">${BRL.format(v[g])} de ${BRL.format(lim)} (meta ${+P[g]||0}%)</span></div>
       <div class="bars">${barsHTML(rows, v[g], {empty:"Nada neste grupo no mês."})}</div>
-      ${list.length?`<div class="tablebox stack"><table><thead><tr><th>Data</th><th>Descrição</th><th>Onde / como</th><th>Categoria</th><th class="r">Valor</th></tr></thead><tbody>${list.slice().sort((a,b)=>b.val-a.val).map(i=>`<tr><td class="num" data-l="Data">${fmtD(i.date)}</td><td class="desc">${esc(i.desc)}</td><td data-l="Onde / como">${esc(i.kind==="cartao"?cardName(i.cardKey):i.meio)}</td><td data-l="Categoria">${esc(i.sub||i.cat)}</td><td class="r num" data-l="Valor">${BRL.format(i.val)}</td></tr>`).join("")}</tbody></table></div>`:""}
+      ${list.length?`<div class="tablebox stack"><table><thead><tr><th>Data</th><th>Descrição</th><th>Onde / como</th><th>Categoria</th><th class="r">Valor</th></tr></thead><tbody>${list.slice().sort((a,b)=>b.val-a.val).map(i=>`<tr><td class="num" data-l="Data">${fmtD(i.date)}</td><td class="desc">${esc(descM(i,selMonth))}</td><td data-l="Onde / como">${esc(ondeDe(i))}</td><td data-l="Categoria">${esc(i.sub||i.cat)}</td><td class="r num" data-l="Valor">${BRL.format(i.val)}</td></tr>`).join("")}</tbody></table></div>`:""}
       <p class="small muted" style="margin:0">Alguma coisa no grupo errado? Mude em <b>Ajustar metas</b>, por categoria ou subcategoria.</p>`;
   }
   if(!$("mEditor").hidden) rMetaEditor();
@@ -1798,7 +1800,7 @@ function rCartoes(){
     const naoEst= i.est? `<button type="button" class="ghost sm" data-ne="${esc(i.id)}" title="Não é estorno: contar normalmente">Não é estorno</button>` : (state.edicoes[i.id]&&state.edicoes[i.id].naoEst)? `<button type="button" class="ghost sm" data-se="${esc(i.id)}" title="Voltar a procurar o estorno desta compra">É estorno</button>` : "";
     const dot= i.ign? "" : i.edited? '<span class="dot info" title="alterado por você"></span>' : i.how==="regra"? `<span class="dot learn" title="aprendido: contém “${esc(i.rk)}”"></span>` : (i.how==="palpite"||i.how==="padrao")? `<span class="dot warn" title="${i.how==="palpite"?"palpite por lojas parecidas":"sem regra"}"></span>` : "";
     const man= i.kind==="manual"? `<span class="tag man" title="Lançada por você">à mão</span><button type="button" class="ghost sm" data-mdel="${esc(i.id)}" title="Excluir este lançamento e todas as parcelas">Excluir</button>` : "";
-    return `<tr class="${i.ign?"ign":proj?"proj":""}"><td class="stk"><div class="dsc" title="${esc(i.desc)}">${dot}<span class="t">${esc(i.desc)}</span></div></td>
+    return `<tr class="${i.ign?"ign":proj?"proj":""}"><td class="stk"><div class="dsc" title="${esc(descM(i,selMonth))}">${dot}<span class="t">${esc(descM(i,selMonth))}</span></div></td>
     <td class="v">${i.ign? fmtNum(i.val) : `<input class="num${i.val!==i.val0?" part":""}" data-v="${esc(i.id)}" inputmode="decimal" value="${fmtNum(i.val)}" title="${i.val!==i.val0?`Sua parte. Valor na fatura: ${fmtNum(i.val0)}`:"Toque para mudar o valor (ex.: só a sua parte)"}" aria-label="Valor que você paga">`}</td>
     <td>${i.terc?'<span class="sm">cartão de outra pessoa</span>':payIgn?'<span class="sm">pagamento da fatura</span>':i.est==="total"?`<div class="cs">${estTag}${naoEst}</div>`:`<div class="cs">${estTag}${catSubSelect(i)}${man}${naoEst}${needsReview(i)?`<button type="button" class="okb" data-ok="${esc(i.id)}" title="A categoria está certa: guardar como regra" aria-label="Confirmar categoria">✓</button>`:""}</div>`}</td>
     <td class="ck"><input type="checkbox" data-ck="${esc(i.id)}" ${i.ign?"":"checked"} ${payIgn||i.terc||i.est==="total"?"disabled":""} aria-label="Eu pago esta compra"></td>
@@ -1908,7 +1910,7 @@ function rAnalise(){
   $("aTrendNote").textContent="meses depois do atual mostram só parcelas já conhecidas";
   $("aTrend").innerHTML=trendSVG(ms, vals, m, col);
   $("aListTitle").textContent=selCat? `Lançamentos de ${selCat} em ${fmtMLong(m)}` : "Lançamentos";
-  $("aTx").innerHTML=list.sort((a,b)=>b.val-a.val).map(i=>`<tr><td class="num" data-l="Data">${fmtD(i.date)}</td><td data-l="Onde / como">${esc(i.kind==="cartao"?cardName(i.cardKey):i.meio)}</td><td class="desc">${esc(i.desc)}</td><td data-l="Subcategoria">${esc(i.sub||"—")}</td><td class="r num" data-l="Valor">${BRL.format(i.val)}</td></tr>`).join("")||`<tr><td colspan="5" class="empty">Nada nesta categoria.</td></tr>`;
+  $("aTx").innerHTML=list.sort((a,b)=>b.val-a.val).map(i=>`<tr><td class="num" data-l="Data">${fmtD(i.date)}</td><td data-l="Onde / como">${esc(ondeDe(i))}</td><td class="desc">${esc(descM(i,selMonth))}</td><td data-l="Subcategoria">${esc(i.sub||"—")}</td><td class="r num" data-l="Valor">${BRL.format(i.val)}</td></tr>`).join("")||`<tr><td colspan="5" class="empty">Nada nesta categoria.</td></tr>`;
 }
 function trendSVG(ms, vals, cur, col){
   if(!ms.length) return `<div class="empty">Sem dados.</div>`;
@@ -2161,7 +2163,7 @@ document.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer?.fil
 })();
 // ---- painel lateral: detalhe dos cards do Resumo ----
 
-const ondeDe=i=>isCardItem(i)? cardName(i.cardKey) : (i.meio||"");
+function ondeDe(i){ return isCardItem(i)? cardName(i.cardKey) : (String(i.meio||"").includes("|")? cardName(i.meio) : (i.meio||"")); }
 const parcDe=(i,x)=> i.N>1? `parcela ${i.n+(x-i.m)}/${i.N}` : "";
 function dwItem(i,x){ const extra=[fmtD(i.date), ondeDe(i), parcDe(i,x)].filter(Boolean).join(" · ");
   return `<div class="it"><span class="d">${esc(i.desc)}</span><span class="v">${BRL.format(i.val)}</span><span class="m">${esc(extra)}</span></div>`; }
