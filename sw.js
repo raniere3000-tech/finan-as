@@ -1,6 +1,6 @@
 // Leitor de Faturas: deixa o app abrir mesmo sem internet.
 // A página e as bibliotecas ficam guardadas; os seus dados continuam só na sua pasta e no navegador.
-const CACHE = "leitor-faturas-v2";
+const CACHE = "leitor-faturas-v3";
 const BASE = ["./", "./index.html", "./app/manifest.webmanifest", "./app/icon.svg", "./app/icon-192.png", "./app/icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(BASE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
