@@ -109,6 +109,9 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     ok(await page.isVisible("#lAjuda"), `${nome}: ajuda expande de novo`);
     // PIN
     await page.evaluate(() => go("dados")); await page.waitForTimeout(100);
+    ok(await page.evaluate(() => { go("dados"); return [...document.querySelectorAll("#v-dados > .panel, #v-pasta .panel")].every(p => p.classList.contains("fechado")) && document.getElementById("dPinPanel").querySelector("#pA").offsetParent === null; }), `${nome}: caixas da aba Dados começam recolhidas`);
+    await page.click("#dPinPanel > header"); await page.waitForTimeout(100);
+    ok(await page.isVisible("#pA"), `${nome}: tocar no título abre a caixa`);
     await page.fill("#pA", "1234"); await page.fill("#pB", "1234"); await page.click("#pNovo button[type=submit]"); await page.waitForTimeout(600);
     ok(await page.evaluate(() => !!pinGet() && !document.getElementById("bLock").hidden), `${nome}: ativa o PIN`);
     await page.click("#bLock"); await page.waitForTimeout(100);

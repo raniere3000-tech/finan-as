@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.18";
+const VERSAO="2.19";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -355,7 +355,7 @@ function learnFrom(it, cat, sub, confirmar){
   save(); render();
   const n=ITEMS.filter(i=>i.kind==="cartao" && i.how==="regra" && i.rk===L.k).length;
   const undo={label:"Só esta compra",run:()=>{ state.regras=snap.regras; state.edicoes=snap.edicoes; if(snap.man){ const j=state.manuais.findIndex(x=>x.id===it.id); if(j>=0) state.manuais[j]=snap.man; } setOne(); save(); render(); toast("Ok, mudei só esta compra e não guardei a regra."); }};
-  toast(`${confirmar?"Confirmado":"Aprendido"}: “${esc(L.mk)}” vai para <b>${esc(sub||cat)}</b>.${n>1?` ${n} compras seguem a regra`:""} As próximas faturas já vêm assim.`,[undo,{label:"Ver regras",run:()=>{ go("pasta"); setTimeout(()=>$("pRules").scrollIntoView({behavior:"smooth"}),60); }}]);
+  toast(`${confirmar?"Confirmado":"Aprendido"}: “${esc(L.mk)}” vai para <b>${esc(sub||cat)}</b>.${n>1?` ${n} compras seguem a regra`:""} As próximas faturas já vêm assim.`,[undo,{label:"Ver regras",run:()=>{ go("pasta"); setTimeout(()=>{ dAbrir($("pRules")); $("pRules").scrollIntoView({behavior:"smooth"}); },60); }}]);
 }
 function bindCatSelects(root){
   root.querySelectorAll("select[data-cs]").forEach(s=>s.onchange=()=>{
@@ -563,7 +563,7 @@ function alerts(){
   const bar=$("alertBar");
   if(!n || alertHidden || tab==="dados"){ bar.hidden=true; return; }
   bar.innerHTML=`<span>⚠ <b>Falta preencher ${n===1?"1 cartão":n+" cartões"}:</b> ${pend.map(x=>`${esc(cardName(x.k))} (${x.miss.join(" e ")})`).join(" · ")}. Sem essas datas a fatura pode cair no mês errado.</span><span class="acts"><button type="button" class="primary" id="aGo">Preencher</button><button type="button" class="ghost" id="aX">Depois</button></span>`;
-  bar.hidden=false; $("aGo").onclick=()=>go("dados"); $("aX").onclick=()=>{ alertHidden=true; bar.hidden=true; };
+  bar.hidden=false; $("aGo").onclick=()=>{ go("dados",true); dAbrir($("dAlertPanel")); dAbrir($("dCards").closest(".panel")); }; $("aX").onclick=()=>{ alertHidden=true; bar.hidden=true; };
 }
 
 // ---------------- dados ----------------
@@ -1180,6 +1180,13 @@ $("pinForm").onsubmit=async e=>{ e.preventDefault(); const v=$("pinIn").value.tr
 $("pinEsq").onclick=()=>{ $("pinEsqTxt").hidden=false; };
 $("pinEsqOk").onclick=async()=>{ pinPut(null); try{ localStorage.removeItem("lf3-state"); }catch(e){} try{ await idbSet("dir",null); }catch(e){} location.reload(); };
 $("bLock").onclick=()=>pinTrancar();
+// aba Dados: cada caixa vira um accordion, começando recolhida (toque no título abre/fecha)
+function dAbrir(p,abrir=true){ if(!p||!p.classList.contains("acc")) return; p.classList.toggle("fechado",!abrir); const h=p.querySelector(":scope > header"); if(h) h.setAttribute("aria-expanded",abrir); }
+document.querySelectorAll("#v-dados > .panel, #v-pasta .panel").forEach(p=>{ const h=p.querySelector(":scope > header"); if(!h) return;
+  p.classList.add("acc","fechado"); h.setAttribute("role","button"); h.tabIndex=0; h.setAttribute("aria-expanded","false");
+  h.insertAdjacentHTML("beforeend",'<span class="accv" aria-hidden="true">▾</span>');
+  const tg=e=>{ if(e.target.closest("button,input,select,a,label")) return; dAbrir(p,p.classList.contains("fechado")); };
+  h.addEventListener("click",tg); h.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); tg(e); } }); });
 $("cAddBtn").onclick=()=>{ const d=$("cAddBox"); d.open=!d.open; $("cAddBtn").setAttribute("aria-expanded",d.open); if(d.open){ d.scrollIntoView({behavior:"smooth",block:"start"}); setTimeout(()=>$("caDesc").focus({preventScroll:true}),300); } };
 $("bNuvem").onclick=async()=>{ if(estadoNuvem()==="desc"){ $("bDir").click(); return; }
   clearTimeout(saveTimer); await gravarAgora(); const e=estadoNuvem();

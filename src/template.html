@@ -500,6 +500,12 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
 .mtip{position:absolute;pointer-events:none;background:#fff;border:1px solid #e3e9e6;border-radius:10px;box-shadow:0 8px 24px rgba(31,42,39,.12);padding:8px 10px;font-size:.8rem;line-height:1.45;white-space:nowrap;z-index:3}
 .mtip b{font-family:var(--f-display)} .mtip .num{float:right;margin-left:14px}
 @media (max-width:640px){ .donutwrap{grid-template-columns:minmax(0,1fr)} .donut{margin:0 auto} .barrow.sub{padding-left:14px} }
+/* aba dados: accordion */
+.panel.acc > header{cursor:pointer;position:relative;padding-right:30px;user-select:none}
+.panel.acc > header .accv{position:absolute;right:0;top:2px;color:var(--accent);font-size:1.1rem;transition:transform .15s}
+.panel.acc.fechado > header .accv{transform:rotate(-90deg)}
+.panel.acc.fechado > :not(header){display:none!important}
+.panel.acc.fechado{gap:0}
 /* aba cartões: filtros e lançar compra dentro da lista */
 .cfilt{display:grid;grid-template-columns:repeat(2,minmax(0,16rem));gap:10px}
 .cfilt label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;font-weight:700;color:var(--muted);min-width:0}
