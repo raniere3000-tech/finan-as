@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.16";
+const VERSAO="2.17";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -834,7 +834,9 @@ function rAnalise(){
   const mers=group(list,i=>i.kind==="manual"?i.desc.toUpperCase():merchant(i.desc)).slice(0,10).map(r=>Object.assign(r,{label:r.k+(r.n>1?` (${r.n}×)`:""),c:col}));
   $("aMers").innerHTML=barsHTML(mers, tot);
   // trend
-  const ms=monthsAll().filter(x=>x<=m+3).slice(-12);
+  const estreito=($("aTrend").clientWidth||760)<520;
+  let ms=monthsAll().filter(x=>x<=m+3).slice(-12);
+  if(estreito){ const k=Math.max(0,ms.indexOf(m)); const ini=Math.max(0,Math.min(k-3, ms.length-7)); ms=ms.slice(ini,ini+7); }
   const subsAll=[...new Set(ITEMS.filter(i=>i.cat===selCat&&isOut(i)).map(i=>i.sub||"(sem subcategoria)"))];
   const vals=ms.map(x=>ITEMS.filter(i=>inM(i,x)&&isOut(i)&&i.cat===selCat).reduce((s,i)=>s+i.val,0));
   $("aTrendTitle").textContent=selCat? `${selCat} mês a mês` : "Mês a mês";
@@ -845,14 +847,14 @@ function rAnalise(){
 }
 function trendSVG(ms, vals, cur, col){
   if(!ms.length) return `<div class="empty">Sem dados.</div>`;
-  const W=760,H=220,pl=56,pr=10,pt=14,pb=34, max=Math.max(...vals,1), nice=niceMax(max);
+  const box=$("aTrend"), W=Math.max(300, (box&&box.clientWidth)||760), est=W<520, H=est?200:220,pl=est?46:56,pr=10,pt=20,pb=34, max=Math.max(...vals,1), nice=niceMax(max), fs=est?10:11;
   const bw=(W-pl-pr)/ms.length, ticks=[0,nice/2,nice];
-  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gasto por mês">`;
-  ticks.forEach(t=>{ const y=pt+(H-pt-pb)*(1-t/nice); s+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl-6}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="JetBrains Mono, monospace">${Math.round(t).toLocaleString("pt-BR")}</text>`; });
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Gasto por mês">`;
+  ticks.forEach(t=>{ const y=pt+(H-pt-pb)*(1-t/nice); s+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl-6}" y="${y+4}" text-anchor="end" font-size="${fs}" fill="var(--muted)" font-family="JetBrains Mono, monospace">${Math.round(t).toLocaleString("pt-BR")}</text>`; });
   ms.forEach((x,i)=>{ const h=(H-pt-pb)*(vals[i]/nice), w=Math.min(bw*0.64,56), X=pl+i*bw+(bw-w)/2, Y=H-pb-h;
     s+=`<rect x="${X}" y="${Y}" width="${w}" height="${Math.max(0,h)}" rx="3" fill="${col}" opacity="${x===cur?1:(x>cur?0.35:0.6)}"><title>${fmtMLong(x)}: ${BRL.format(vals[i])}</title></rect>`;
-    s+=`<text x="${X+w/2}" y="${H-pb+16}" text-anchor="middle" font-size="11" fill="${x===cur?"var(--ink)":"var(--muted)"}" font-weight="${x===cur?700:400}">${fmtM(x)}</text>`;
-    if(x===cur&&vals[i]) s+=`<text x="${X+w/2}" y="${Y-5}" text-anchor="middle" font-size="11" fill="var(--ink)" font-family="JetBrains Mono, monospace">${Math.round(vals[i]).toLocaleString("pt-BR")}</text>`; });
+    s+=`<text x="${X+w/2}" y="${H-pb+16}" text-anchor="middle" font-size="${fs}" fill="${x===cur?"var(--ink)":"var(--muted)"}" font-weight="${x===cur?700:400}">${est&&i>0&&!fmtM(x).startsWith("jan")?fmtM(x).split("/")[0]:fmtM(x)}</text>`;
+    if(x===cur&&vals[i]) s+=`<text x="${X+w/2}" y="${Y-5}" text-anchor="middle" font-size="${fs}" fill="var(--ink)" font-family="JetBrains Mono, monospace">${Math.round(vals[i]).toLocaleString("pt-BR")}</text>`; });
   return s+"</svg>";
 }
 function niceMax(v){ const p=Math.pow(10,Math.floor(Math.log10(v))); const n=v/p; return (n<=1?1:n<=2?2:n<=5?5:10)*p; }
