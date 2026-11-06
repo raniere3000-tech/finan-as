@@ -58,14 +58,18 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     await page.keyboard.press("Escape"); await page.waitForTimeout(100);
     ok(await page.evaluate(() => document.getElementById("drawer").hidden), `${nome}: painel fecha`);
     // cartão adicionado à mão + compra parcelada que entra nos meses seguintes
-    await page.evaluate(() => go("cartoes")); await page.click("#cAddBox > summary"); await page.waitForTimeout(100);
+    await page.evaluate(() => go("cartoes")); await page.click("#cAddBtn"); await page.waitForTimeout(100);
     await page.selectOption("#caCard", "__novo");
-    await page.fill("#caBanco", "Banco Teste"); await page.fill("#caFin", "4321"); await page.fill("#caFech", "28"); await page.fill("#caVenc", "5");
+    await page.fill("#caBanco", "Banco Teste"); await page.fill("#caResp", "Fulana"); await page.fill("#caFin", "4321"); await page.fill("#caFech", "28"); await page.fill("#caVenc", "5");
     await page.evaluate(() => { document.getElementById("caDate").value = "2026-03-10"; caPrev(); });
     await page.fill("#caDesc", "Geladeira nova"); await page.fill("#caVal", "1.000,00"); await page.fill("#caParc", "10");
     ok(await page.evaluate(() => /10x de .*100,00.*abr\/26 até jan\/27/i.test(document.getElementById("caPrev").textContent)), `${nome}: prévia das parcelas no cartão manual`);
     await page.click("#caSave"); await page.waitForTimeout(150);
     ok(await page.evaluate(() => { const it = ITEMS.find(i => i.desc === "Geladeira nova"); return it && it.cardKey === "Banco Teste|4321" && it.val === 100 && it.mEnd - it.m === 9 && cardKeys().includes("Banco Teste|4321"); }), `${nome}: compra parcelada lançada no cartão novo`);
+    ok(await page.evaluate(() => { const r = [...document.querySelectorAll("#cResp option")].map(o => o.value); if (!r.includes("Fulana")) return false;
+      const sel = document.getElementById("cResp"); sel.value = "Fulana"; sel.dispatchEvent(new Event("change")); const cards = [...document.querySelectorAll("#cCard option")].map(o => o.value);
+      const ok1 = cards.length === 2 && cards[1] === "Banco Teste|4321" && [...selCards].join() === "Banco Teste|4321"; sel.value = ""; sel.dispatchEvent(new Event("change")); return ok1 && !document.getElementById("cCfg") && !!document.querySelector("#cDonut svg"); }), `${nome}: filtro por responsável e cartão, rosca na aba Cartões`);
+    ok(await page.evaluate(() => { go("resumo"); selMonth = ITEMS.find(i => i.est).m; render(); const x = document.getElementById("estX"); if (!x) return false; x.click(); render(); const fechado = document.getElementById("estBar").hidden; localStorage.removeItem("lf-estX"); render(); go("cartoes"); return fechado; }), `${nome}: ✕ fecha o aviso de estornos`);
     ok(await page.evaluate(() => { const it = ITEMS.find(i => i.desc === "Geladeira nova"); return descM(it, it.m + 2) === "Geladeira nova - Parcela 3/10" && ondeDe(it) !== "Banco Teste|4321" && descM({ kind: "manual", tipo: "Saída", cardKey: "Banco Teste|4321", desc: "Sapato", N: 1, n: 1, m: 0 }, 0) === "Sapato - Parcela 1/1" && descM({ kind: "manual", tipo: "Saída", cardKey: "Pix", desc: "Luz", N: 1, n: 1, m: 0 }, 0) === "Luz"; }), `${nome}: compra à mão mostra "Parcela 3/10" e o nome do cartão`);
     ok(await page.evaluate(() => { const it = ITEMS.find(i => i.desc === "Geladeira nova"); selMonth = it.m + 1; render(); return /100,00/.test(document.getElementById("cNext").textContent) && [...document.querySelectorAll("#cTx tr")].some(tr => /Geladeira nova/.test(tr.textContent) && /2\/10/.test(tr.textContent)); }), `${nome}: parcela aparece na fatura e na próxima`);
     await page.selectOption("#caCard", "Banco Teste|4321");

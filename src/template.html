@@ -500,6 +500,15 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
 .mtip{position:absolute;pointer-events:none;background:#fff;border:1px solid #e3e9e6;border-radius:10px;box-shadow:0 8px 24px rgba(31,42,39,.12);padding:8px 10px;font-size:.8rem;line-height:1.45;white-space:nowrap;z-index:3}
 .mtip b{font-family:var(--f-display)} .mtip .num{float:right;margin-left:14px}
 @media (max-width:640px){ .donutwrap{grid-template-columns:minmax(0,1fr)} .donut{margin:0 auto} .barrow.sub{padding-left:14px} }
+/* aba cartões: filtros e lançar compra dentro da lista */
+.cfilt{display:grid;grid-template-columns:repeat(2,minmax(0,16rem));gap:10px}
+.cfilt label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;font-weight:700;color:var(--muted);min-width:0}
+.cfilt select{font:inherit;font-size:.95rem;font-weight:700;color:var(--ink);background:#fff;border:1px solid #e3e9e6;border-radius:10px;padding:9px 10px;min-width:0}
+.addbox.inbox{border:1px dashed var(--accent);border-radius:14px;padding:10px 12px;background:#f1faf6}
+.addbox.inbox:not([open]){display:none}
+#cAddBtn{padding:7px 12px}
+.estbar .x{font-size:1.05rem;padding:4px 8px;color:inherit;opacity:.7}
+@media (max-width:640px){ .cfilt{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} }
 /* nuvem: situação do salvamento */
 button.nuvem{padding:6px 9px}
 button.nuvem .nv-ok,button.nuvem .nv-x,button.nuvem .nv-p{display:none}
@@ -677,8 +686,8 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
   <!-- CARTOES -->
   <section class="view" id="v-cartoes" hidden>
     <div class="panel">
-      <header><h2>Escolha os cartões</h2><span class="small muted">Toque para ligar ou desligar; “Todos” junta tudo</span></header>
-      <div class="chips" id="cChips"></div>
+      <header><h2>Escolha os cartões</h2><span class="small muted" id="cFiltNote">Escolha o responsável e o cartão</span></header>
+      <div class="cfilt"><label>Responsável<select id="cResp" aria-label="Responsável pelo cartão"></select></label><label>Cartão<select id="cCard" aria-label="Cartão"></select></label></div>
     </div>
     <div class="tiles">
       <div class="tile"><span class="lab">Fatura do mês</span><span class="val out" id="cTot">R$ 0,00</span><span class="sub" id="cTotSub"></span></div>
@@ -686,41 +695,38 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
       <div class="tile"><span class="lab">Parcelas de compras antigas</span><span class="val" id="cParc">R$ 0,00</span><span class="sub">dentro desta fatura</span></div>
       <div class="tile"><span class="lab">Próxima fatura (prevista)</span><span class="val" id="cNext">R$ 0,00</span><span class="sub">só parcelas já conhecidas</span></div>
     </div>
-    <details class="panel addbox" id="cAddBox">
-      <summary><span class="h2">+ Lançar compra no cartão</span><span class="small muted">Cartão sem fatura na pasta ou compra que não veio no arquivo. Parcelas entram nos meses seguintes.</span></summary>
-      <form id="cAdd" autocomplete="off">
-        <div class="form">
-          <label class="wide">Cartão<select id="caCard" aria-label="Cartão"></select></label>
-          <label>Data da compra<input id="caDate" type="date" required></label>
-          <label>Categoria<select id="caCs" aria-label="Categoria"></select></label>
-        </div>
-        <div class="form" id="caNovo" hidden>
-          <label class="wide">Nome do cartão ou banco<input id="caBanco" type="text" placeholder="Ex.: Itaú"></label>
-          <label>Final (4 números)<input id="caFin" inputmode="numeric" maxlength="4" placeholder="opcional"></label>
-          <label>Fecha dia<input id="caFech" inputmode="numeric" maxlength="2" placeholder="dia"></label>
-          <label>Vence dia<input id="caVenc" inputmode="numeric" maxlength="2" placeholder="dia"></label>
-        </div>
-        <div class="form">
-          <label class="wide">Descrição<input id="caDesc" type="text" placeholder="Ex.: Geladeira" required></label>
-          <label>Valor (R$)<input id="caVal" type="text" inputmode="decimal" placeholder="0,00" required></label>
-          <label>O valor é<select id="caValTipo"><option value="t">Total da compra</option><option value="p">De cada parcela</option></select></label>
-          <label>Parcelas<input id="caParc" type="number" min="1" max="72" placeholder="1"></label>
-          <label>Compra antiga? Parcela atual<input id="caPat" type="number" min="1" max="72" placeholder="—"><span class="hint" id="caPatHint"></span></label>
-        </div>
-        <div class="small muted" id="caPrev" aria-live="polite"></div>
-        <div class="row"><button class="primary" type="submit" id="caSave">Lançar no cartão</button></div>
-      </form>
-    </details>
-    <div class="grid2">
-      <div class="panel"><header><h2>Por categoria</h2></header><div class="bars" id="cCats"></div></div>
-      <div class="panel">
-        <header><h2>Ajustes dos cartões</h2></header>
-        <div class="tablebox"><table><thead><tr><th>Cartão</th><th>Apelido</th><th class="r">Fecha dia</th><th class="r">Vence dia</th><th>Quem paga</th></tr></thead><tbody id="cCfg"></tbody></table></div>
-        <p class="small muted" style="margin:0">Fecha: compras a partir desse dia vão para a fatura seguinte. Vence: se for antes do fechamento, a fatura conta no mês seguinte.</p>
-      </div>
+    <div class="panel">
+      <header><h2>Por categoria</h2><span class="small muted">Toque numa categoria para ver na Análise</span></header>
+      <div class="donutwrap"><div id="cDonut" class="donut"></div><div class="dlist"><div class="bars" id="cCats"></div></div></div>
     </div>
     <div class="panel">
-      <header><h2>Compras da fatura</h2><div class="txhead"><button type="button" class="chip" id="cAll" aria-pressed="true">Todas</button><button type="button" class="chip rev" id="cRev" aria-pressed="false">A revisar <span class="num" id="cRevN">0</span></button><button type="button" class="chip" id="cEst" aria-pressed="false" hidden>Estornos <span class="num" id="cEstN">0</span></button><input id="cQ" type="search" placeholder="Buscar" aria-label="Buscar compra" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:9px"></div></header>
+      <header><h2>Compras da fatura</h2><div class="txhead"><button type="button" class="primary" id="cAddBtn" aria-controls="cAddBox" title="Lançar compra no cartão">+ Lançar compra</button><button type="button" class="chip" id="cAll" aria-pressed="true">Todas</button><button type="button" class="chip rev" id="cRev" aria-pressed="false">A revisar <span class="num" id="cRevN">0</span></button><button type="button" class="chip" id="cEst" aria-pressed="false" hidden>Estornos <span class="num" id="cEstN">0</span></button><input id="cQ" type="search" placeholder="Buscar" aria-label="Buscar compra" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:9px"></div></header>
+      <details class="addbox inbox" id="cAddBox">
+        <summary><span class="h2">+ Lançar compra no cartão</span><span class="small muted">Cartão sem fatura na pasta ou compra que não veio no arquivo. Parcelas entram nos meses seguintes.</span></summary>
+        <form id="cAdd" autocomplete="off">
+          <div class="form">
+            <label class="wide">Cartão<select id="caCard" aria-label="Cartão"></select></label>
+            <label>Data da compra<input id="caDate" type="date" required></label>
+            <label>Categoria<select id="caCs" aria-label="Categoria"></select></label>
+          </div>
+          <div class="form" id="caNovo" hidden>
+            <label class="wide">Nome do cartão ou banco<input id="caBanco" type="text" placeholder="Ex.: Itaú"></label>
+            <label>Final (4 números)<input id="caFin" inputmode="numeric" maxlength="4" placeholder="opcional"></label>
+            <label>Fecha dia<input id="caFech" inputmode="numeric" maxlength="2" placeholder="dia"></label>
+            <label>Vence dia<input id="caVenc" inputmode="numeric" maxlength="2" placeholder="dia"></label>
+            <label class="wide">Responsável<input id="caResp" type="text" list="respList" placeholder="Ex.: Raniere"></label>
+          </div>
+          <div class="form">
+            <label class="wide">Descrição<input id="caDesc" type="text" placeholder="Ex.: Geladeira" required></label>
+            <label>Valor (R$)<input id="caVal" type="text" inputmode="decimal" placeholder="0,00" required></label>
+            <label>O valor é<select id="caValTipo"><option value="t">Total da compra</option><option value="p">De cada parcela</option></select></label>
+            <label>Parcelas<input id="caParc" type="number" min="1" max="72" placeholder="1"></label>
+            <label>Compra antiga? Parcela atual<input id="caPat" type="number" min="1" max="72" placeholder="—"><span class="hint" id="caPatHint"></span></label>
+          </div>
+          <div class="small muted" id="caPrev" aria-live="polite"></div>
+          <div class="row"><button class="primary" type="submit" id="caSave">Lançar no cartão</button></div>
+        </form>
+      </details>
       <details class="dica"><summary>Como corrigir e ensinar o leitor</summary><p class="small muted" style="margin:6px 0 0" id="cLearnTip">Corrigiu uma categoria? O leitor aprende com a loja e passa a classificar as próximas compras sozinho. Bolinha <span class="dot learn"></span> = aprendido com você, <span class="dot warn"></span> = palpite ou sem regra: confira e toque em ✓. Não é você quem paga? Desmarque <b>Eu pago</b>. Paga só uma parte? Toque no valor e digite a sua parte. Cartão inteiro de outra pessoa: em Dados › Cartões, mude “Quem paga”.</p></details>
       <div class="sheet"><table><thead><tr><th class="stk">Descrição</th><th class="r">Valor (R$)</th><th>Categoria › subcategoria</th><th title="Desmarque se não é você quem paga">Eu pago</th><th>Data</th><th>Cartão</th><th>Parcela</th></tr></thead><tbody id="cTx"></tbody></table></div>
     </div>
@@ -784,7 +790,7 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
     </div>
     <div class="panel">
       <header><h2>Cartões</h2><span class="small muted">Aparecem sozinhos quando uma fatura nova é lida</span></header>
-      <div class="tablebox stack"><table><thead><tr><th>Cartão</th><th>Apelido</th><th class="r">Fecha dia</th><th class="r">Vence dia</th><th>Quem paga</th><th>Situação</th></tr></thead><tbody id="dCards"></tbody></table></div>
+      <div class="tablebox stack"><table><thead><tr><th>Cartão</th><th>Apelido</th><th>Responsável</th><th class="r">Fecha dia</th><th class="r">Vence dia</th><th>Quem paga</th><th>Situação</th></tr></thead><tbody id="dCards"></tbody></table></div><datalist id="respList"></datalist>
       <details class="dica" id="dNovoBox"><summary>+ Adicionar cartão à mão</summary>
         <form class="form" id="dNovo" autocomplete="off" style="margin-top:8px">
           <label class="wide">Nome do cartão ou banco<input id="dnBanco" type="text" placeholder="Ex.: Itaú" required></label>
