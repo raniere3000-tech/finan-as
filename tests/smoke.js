@@ -64,7 +64,21 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     for (const t of ["resumo", "cartoes", "analise", "dados", "lancamentos"]) { await page.click(`[data-tab=${t}]`); await page.waitForTimeout(120); }
     await page.fill("#lTx tr.newrow [data-f=desc]", "Conta de luz"); await page.press("#lTx tr.newrow [data-f=desc]", "Tab");
     await page.fill("#lTx tr.newrow [data-f=val]", "120,00"); await page.press("#lTx tr.newrow [data-f=val]", "Tab"); await page.waitForTimeout(200);
-    ok(await page.evaluate(() => state.manuais.some(m => m.desc === "Conta de luz" && m.val === 120)), `${nome}: lançamento manual pela tabela`);
+    ok(await page.evaluate(() => !state.manuais.some(m => m.desc === "Conta de luz") && document.activeElement.dataset.f === "date"), `${nome}: Tab segue para a data sem lançar ainda`);
+    await page.focus("#lTx tr.newrow [data-f=meio]"); await page.press("#lTx tr.newrow [data-f=meio]", "Tab"); await page.waitForTimeout(100);
+    ok(await page.evaluate(() => !state.manuais.some(m => m.desc === "Conta de luz") && document.activeElement.dataset.f === "parc"), `${nome}: Tab passa por todos os campos da linha nova`);
+    await page.press("#lTx tr.newrow [data-f=parc]", "Tab"); await page.waitForTimeout(200);
+    ok(await page.evaluate(() => state.manuais.some(m => m.desc === "Conta de luz" && m.val === 120)), `${nome}: lançamento manual pela tabela (ao sair da linha)`);
+    ok(await page.evaluate(() => { const a = document.activeElement; return a && a.dataset.f === "desc" && a.closest("tr") && !a.closest("tr").classList.contains("newrow"); }), `${nome}: depois da linha nova o Tab vai para os lançamentos`);
+    const rid = await page.evaluate(() => document.activeElement.closest("tr").dataset.id);
+    const v0 = await page.evaluate(id => state.manuais.find(x => x.id === id).val, rid);
+    await page.keyboard.press("Tab"); await page.keyboard.press("Control+A"); await page.keyboard.type("130"); await page.keyboard.press("Tab"); await page.waitForTimeout(150);
+    ok(await page.evaluate(id => state.manuais.find(x => x.id === id).val === 130 && document.activeElement.dataset.f === "date" && document.activeElement.closest("tr").dataset.id === id, rid), `${nome}: editar lançamento e seguir com Tab`);
+    await page.evaluate(([id, v]) => { state.manuais.find(x => x.id === id).val = v; save(); render(); }, [rid, v0]);
+    ok(await page.evaluate(() => { const k = cardKeys()[0], d = lDraft.date; Object.assign(lDraft, { desc: "Tênis no cartão", val: 300, meio: k }); lCommit(true);
+      const it = ITEMS.find(i => i.desc === "Tênis no cartão"); return it && isCardItem(it) && [...document.querySelectorAll("#lTx tr[data-id]")].some(tr => tr.querySelector("[data-f=desc]").value === "Tênis no cartão" && tr.querySelector("[data-f=meio]").value === k); }), `${nome}: compra no cartão continua na lista de + Lançar para editar`);
+    await page.evaluate(() => { state.manuais = state.manuais.filter(x => x.desc !== "Tênis no cartão"); save(); render(); });
+    await page.focus("#lTx tr.newrow [data-f=desc]");
     await page.fill("#lTx tr.newrow [data-f=desc]", "conta de luz"); await page.press("#lTx tr.newrow [data-f=desc]", "Tab"); await page.waitForTimeout(150);
     ok(await page.isVisible("#lAjuda [data-usarval]"), `${nome}: ajuda sugere o último valor da mesma descrição`);
     await page.click("#lAjuda [data-usarval]"); await page.waitForTimeout(150);

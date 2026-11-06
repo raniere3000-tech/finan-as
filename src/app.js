@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.1";
+const VERSAO="2.2";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -849,9 +849,11 @@ function lRowHTML(r, isNew){
     <td>${isNew?"":`<button type="button" class="del" data-del title="Excluir" aria-label="Excluir lançamento">×</button>`}</td></tr>`;
 }
 function rLanc(){
-  const m=selMonth; const list=ITEMS.filter(i=>i.kind==="manual"&&inM(i,m)).sort((a,b)=>a.date-b.date);
-  const ins=list.filter(i=>!isOut(i)).reduce((s,i)=>s+i.val,0), outs=list.filter(isOut).reduce((s,i)=>s+i.val,0);
-  $("lSum").textContent=`Entradas ${BRL.format(ins)} · Saídas ${BRL.format(outs)}`;
+  // compra no cartão fica aqui no mês da compra (para editar) e conta na fatura em que cai
+  const m=selMonth; const list=ITEMS.filter(i=>i.kind==="manual"&&(isCardItem(i)? monthIndex(i.date)===m : inM(i,m))).sort((a,b)=>a.date-b.date);
+  const doMes=ITEMS.filter(i=>i.kind==="manual"&&inM(i,m)), nCart=list.filter(isCardItem).length;
+  const ins=doMes.filter(i=>!isOut(i)).reduce((s,i)=>s+i.val,0), outs=doMes.filter(isOut).reduce((s,i)=>s+i.val,0);
+  $("lSum").textContent=`Entradas ${BRL.format(ins)} · Saídas ${BRL.format(outs)}${nCart?` · ${nCart} no cartão (contam na fatura)`:""}`;
   if(!lDraft.date){ const t=new Date(); lDraft.date=isoD(monthIndex(t)===m? t : new Date(Math.floor(m/12),m%12,1)); }
   const recs=list.map(i=>state.manuais.find(x=>x.id===i.id)).filter(Boolean);
   $("lTx").innerHTML=lRowHTML(lDraft,true)+recs.map(r=>lRowHTML(r,false)).join("");
@@ -859,7 +861,11 @@ function rLanc(){
   $("lSug").innerHTML=sug.map(d=>`<option value="${esc(d)}"></option>`).join("");
   $("lTx").querySelectorAll("tr").forEach(tr=>{
     const id=tr.dataset.id, isNew=!id;
-    tr.querySelectorAll("[data-f]").forEach(el=>el.onchange=()=>lCell(isNew?null:id, el.dataset.f, el.value, tr));
+    tr.querySelectorAll("[data-f]").forEach(el=>{ el.onchange=()=>lCell(isNew?null:id, el.dataset.f, el.value, tr);
+      // Enter: na linha nova lança na hora; nas outras só confirma o campo
+      el.onkeydown=e=>{ if(e.key!=="Enter" || el.tagName==="SELECT") return; e.preventDefault(); el.onchange(); if(isNew){ if(lCommit()) lFocoNovo(); } else lSair(tr, null); }; });
+    // o Tab percorre todos os campos da linha; ao sair dela, a linha nova vira lançamento e as editadas são atualizadas
+    tr.addEventListener("focusout",e=>{ const to=e.relatedTarget; if(to && tr.contains(to)) return; setTimeout(()=>lSair(tr, to),0); });
     if(isNew){ const d=tr.querySelector("[data-f=desc]"); d.setAttribute("list","lSug"); d.setAttribute("autocomplete","off");
       d.oninput=()=>{ lDraft.desc=d.value.trim(); if(!lDraft.csTouched){ delete lDraft.cat; delete lDraft.sub; } lAjuda(); };
       tr.querySelector("[data-f=val]").oninput=()=>lAjuda(); }
@@ -876,27 +882,43 @@ function lCell(id, f, v, tr){
   else if(f==="tipo"){ r.tipo=v; delete r.cat; delete r.sub; r.csTouched=false; }
   else { r[f]= f==="desc"? v.trim() : v; if(f==="meio") r.meioTouched=true; }
   if(id && f==="tipo"){ const ent=v==="Entrada"; const c=cfg.cats.find(x=>ent? x.tipo!=="Despesa" : x.tipo==="Despesa"); r.cat=c?c.nome:""; r.sub=(subOptions(r.cat)[0])||""; }
-  if(id){ if(r.origem==="planilha") r.alterado=true; if(state.seed) state.seed=false; save(); render(); return; }
+  if(id){ if(r.origem==="planilha") r.alterado=true; if(state.seed) state.seed=false; save(); tr.dataset.dirty="1";
+    if(f==="tipo"){ tr.querySelector("[data-f=cs]").innerHTML=catOptions(r.cat,r.sub||"",v==="Entrada"); tr.querySelector("td.v").className="v "+(v==="Entrada"?"in":"out"); }
+    return; }
   // linha nova: vira lançamento quando tem descrição e valor
   if(f==="desc" && !r.csTouched && (r.tipo||"Saída")==="Saída" && r.desc){ const c=categorize(r.desc,"",cfg,state.regras); if(c.how!=="padrao"){ r.cat=c.cat; r.sub=c.sub; } }
   if(f==="desc") lLembrar(r, tr);
-  if(!lCommit()){
-    // atualiza só a linha nova sem perder o foco
+  {
+    // atualiza só a linha nova sem perder o foco (vira lançamento ao sair da linha)
     const cs=tr.querySelector("[data-f=cs]"); if(f!=="cs" && (f==="tipo"||f==="desc")){ cs.innerHTML=(r.cat?"":`<option value="" selected>${(r.tipo||"Saída")==="Entrada"?"escolha a categoria":"automática pela descrição"}</option>`)+catOptions(r.cat,r.sub||"",(r.tipo||"Saída")==="Entrada"); }
     const vc=tr.querySelector("td.v"); vc.className="v "+((r.tipo||"Saída")==="Entrada"?"in":"out");
     lAjuda();
   }
 }
-function lCommit(){
+// saiu de uma linha da tabela: lança a nova / redesenha a editada e devolve o foco para onde o Tab foi
+function lSair(tr, to){
+  if(!tr.isConnected) return;
+  const isNew=tr.classList.contains("newrow"), alvo=to && to.closest && to.closest("#lTx tr") && to.dataset && to.dataset.f? {id:to.closest("tr").dataset.id||"", f:to.dataset.f} : null;
+  let mudou=false;
+  if(isNew) mudou=lCommit(true); else if(tr.dataset.dirty){ delete tr.dataset.dirty; render(); mudou=true; }
+  if(!mudou) return;
+  // saiu da linha nova com Tab e não havia outra linha: vai para o lançamento recém-criado
+  if(!alvo && isNew && Date.now()-lTabEm<600 && lUltimoId){ const el=$("lTx").querySelector(`tr[data-id="${CSS.escape(lUltimoId)}"] [data-f=desc]`); if(el) el.focus(); return; }
+  if(!alvo) return;
+  const el=$("lTx").querySelector(alvo.id? `tr[data-id="${CSS.escape(alvo.id)}"] [data-f=${alvo.f}]` : `tr.newrow [data-f=${alvo.f}]`); if(el) el.focus();
+}
+let lTabEm=0, lUltimoId=null; document.addEventListener("keydown",e=>{ if(e.key==="Tab") lTabEm=Date.now(); },true);
+function lFocoNovo(){ setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },30); }
+function lCommit(semFoco){
   const r=lDraft;
   if(r.desc && r.val>0){
     const tipo=r.tipo||"Saída";
     if(!r.cat){ if(tipo==="Saída"){ const c=categorize(r.desc,"",cfg,state.regras); r.cat=c.cat; r.sub=c.sub; } else { const c=cfg.cats.find(x=>x.tipo!=="Despesa"); r.cat=c?c.nome:""; r.sub=(subOptions(r.cat)[0])||""; } }
     const rec={id:"m:"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), date:r.date, desc:r.desc, tipo, cat:r.cat, sub:r.sub||"", meio:r.meio||"Pix", val:r.val, parc:r.parc||1, origem:"manual"};
     if(r.csTouched && tipo==="Saída") learnRule(rec.desc, rec.cat, rec.sub);
-    state.manuais.push(rec); if(state.seed) state.seed=false; const keepDate=r.date; lDraft={date:keepDate}; save(); render();
+    state.manuais.push(rec); lUltimoId=rec.id; if(state.seed) state.seed=false; const keepDate=r.date; lDraft={date:keepDate}; save(); render();
     toast(`Lançado: ${esc(rec.desc)}, ${BRL.format(rec.val)} em ${esc(rec.sub||rec.cat)}.`);
-    setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },30);
+    if(!semFoco) lFocoNovo();
     return true;
   }
   return false;
@@ -941,7 +963,7 @@ function lAjuda(){
     if(r.parc>1 && valOk) h+=`<div class="muted">${r.parc}x de ${BRL.format(vNum)} (o valor é de cada parcela).</div>`;
     if(r.sugVal && !vTxt) h+=`<div class="acoes"><span>Da última vez foi ${BRL.format(r.sugVal)}.</span><button type="button" class="primary" data-usarval>Lançar com ${BRL.format(r.sugVal)}</button></div>`;
     else if(r.conferir && r.desc && valOk) h+=`<div class="acoes"><span>Confira o valor e a data.</span><button type="button" class="primary" data-lancar>Lançar</button><button type="button" data-limpar>Limpar</button></div>`;
-    else if(r.desc && !valOk) h+=`<div class="muted">Falta o valor. Ao preencher, a linha vira lançamento.</div>`;
+    else if(r.desc && !valOk) h+=`<div class="muted">Falta o valor. Depois de preencher, saia da linha (Tab ou Enter) e ela vira lançamento.</div>`;
   }
   if(!h) h=`<div class="muted">Escreva a descrição. Se você já lançou igual antes, eu completo tipo, categoria, meio de pagamento e sugiro o valor.</div>`;
   el.innerHTML=h;
