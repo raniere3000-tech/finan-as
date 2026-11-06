@@ -92,6 +92,18 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     ok(!(await page.isVisible("#lAjuda")), `${nome}: ajuda recolhe`);
     await page.click("#lAjudaBox summary"); await page.waitForTimeout(100);
     ok(await page.isVisible("#lAjuda"), `${nome}: ajuda expande de novo`);
+    // PIN
+    await page.evaluate(() => go("dados")); await page.waitForTimeout(100);
+    await page.fill("#pA", "1234"); await page.fill("#pB", "1234"); await page.click("#pNovo button[type=submit]"); await page.waitForTimeout(600);
+    ok(await page.evaluate(() => !!pinGet() && !document.getElementById("bLock").hidden), `${nome}: ativa o PIN`);
+    await page.click("#bLock"); await page.waitForTimeout(100);
+    ok(await page.isVisible("#pinLock"), `${nome}: tela de PIN aparece ao bloquear`);
+    await page.fill("#pinIn", "9999"); await page.click("#pinGo"); await page.waitForTimeout(600);
+    ok(await page.isVisible("#pinLock") && /errado/.test(await page.textContent("#pinErr")), `${nome}: PIN errado não abre`);
+    await page.fill("#pinIn", "1234"); await page.press("#pinIn", "Enter"); await page.waitForTimeout(600);
+    ok(!(await page.isVisible("#pinLock")), `${nome}: PIN certo abre`);
+    await page.evaluate(() => go("dados")); await page.fill("#pAt", "1234"); await page.click("#pTira"); await page.waitForTimeout(600);
+    ok(await page.evaluate(() => !pinGet()), `${nome}: tira o PIN`);
     ok(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)), `${nome}: sem rolagem lateral na página`);
     ok(erros.length === 0, `${nome}: sem erros de JavaScript ${erros.join(" | ")}`);
     await page.close();

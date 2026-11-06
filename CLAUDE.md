@@ -55,6 +55,7 @@ Versão pessoal (com as categorias e dados do dono): `python3 build.py --data pr
 
 `versao, cfg (da planilha, opcional), cartoes{chave:{alias,fech,venc,terceiro,manual?}}, arquivos[{nome,origem,text|rows,colMode,mod,size,manual?}], edicoes{idItem:{cat,sub,ign,val,desc,mes,card,naoEst}}, manuais[{id,date,desc,tipo,cat,sub,meio,val,parc,origem,pAt?,mesP?}] (meio com "|" = cartão: conta na fatura dele; pAt/mesP = compra antiga, parcela pAt cai no mês mesP), regras[{k,t,ex,em}], extras{subs[{nome,cat,grp,kw,user?}],del[],mov{},ren{}}, metas{pct{nec,des,pou},renda,map}, arqFinal{arquivo:final}, planMod, pasta, seed`
 
+- PIN fica fora do `state`: localStorage `lf-pin` ({salt,hash,min}), por aparelho.
 - Arquivos que saem da pasta saem da conta (exceto os escolhidos à mão, `manual:true`).
 - A pasta é relida ao voltar para a janela e a cada 60s (`autoScan`, silencioso).
 - Ao conectar uma pasta sem JSON, as configurações já feitas no navegador vão junto.

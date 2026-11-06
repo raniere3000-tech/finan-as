@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.4";
+const VERSAO="2.5";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -530,7 +530,7 @@ function rDados(){
     : `<div class="aok">✓ Tudo preenchido: todos os cartões têm fechamento e vencimento.</div>`;
   bindCardCfg($("dAlert"));
   $("dCards").innerHTML=cardCfgHTML(keys,true); bindCardCfg($("dCards"));
-  rCatsCfg(); rRules();
+  rCatsCfg(); rRules(); rPin();
 }
 function grpSel(attr, val){ return `<select ${attr} aria-label="Grupo 50/30/20">${["nec","des","pou"].map(g=>`<option value="${g}"${g===val?" selected":""}>${GRP[g].nome}</option>`).join("")}</select>`; }
 function rCatsCfg(){
@@ -1049,6 +1049,53 @@ document.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer?.fil
     if(saved){ try{ const p=await saved.queryPermission({mode:"readwrite"}); savedName=saved.name||""; if(p==="granted") await useDir(saved); else { updateCover(); $("bDir").textContent="Reconectar pasta"; setFolder("Pasta "+saved.name+" · clique para reconectar","info"); } }catch(e){} } }
   else if(inFrame) setFolder("Dados só neste navegador");
 })();
+// ---- PIN: tranca a tela ao abrir e depois de um tempo parado (fica só neste aparelho) ----
+const PIN_K="lf-pin", PIN_OK=!!(window.crypto&&crypto.subtle);
+function pinGet(){ try{ return JSON.parse(localStorage.getItem(PIN_K)||"null"); }catch(e){ return null; } }
+function pinPut(v){ try{ if(v) localStorage.setItem(PIN_K,JSON.stringify(v)); else localStorage.removeItem(PIN_K); return true; }catch(e){ return false; } }
+async function pinHash(pin,salt){ const enc=new TextEncoder(); const key=await crypto.subtle.importKey("raw",enc.encode(pin),"PBKDF2",false,["deriveBits"]);
+  const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:enc.encode(salt),iterations:150000,hash:"SHA-256"},key,256); return [...new Uint8Array(bits)].map(b=>b.toString(16).padStart(2,"0")).join(""); }
+async function pinConfere(pin){ const P=pinGet(); return !!P && (await pinHash(pin,P.salt))===P.hash; }
+async function pinDefinir(pin, min){ const salt=[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,"0")).join("");
+  return pinPut({salt, hash:await pinHash(pin,salt), min: min==null? 5 : min}); }
+const pinValido=v=>/^\d{4,8}$/.test(v);
+let pinAtivo=0, pinErros=0, pinEspera=0;
+function pinTrancar(){ if(!pinGet()) return; const L=$("pinLock"); L.hidden=false; $("pinIn").value=""; $("pinErr").textContent=""; $("pinEsqTxt").hidden=true; setTimeout(()=>$("pinIn").focus(),30); }
+function pinTopo(){ $("bLock").hidden=!pinGet(); }
+$("pinForm").onsubmit=async e=>{ e.preventDefault(); const v=$("pinIn").value.trim();
+  if(Date.now()<pinEspera){ $("pinErr").textContent=`Muitas tentativas. Espere ${Math.ceil((pinEspera-Date.now())/1000)} segundos.`; return; }
+  if(await pinConfere(v)){ pinErros=0; pinAtivo=Date.now(); $("pinLock").hidden=true; return; }
+  pinErros++; $("pinIn").value=""; if(pinErros>=5){ pinEspera=Date.now()+30000; pinErros=0; $("pinErr").textContent="PIN errado 5 vezes. Espere 30 segundos."; } else $("pinErr").textContent="PIN errado. Tente de novo."; };
+$("pinEsq").onclick=()=>{ $("pinEsqTxt").hidden=false; };
+$("pinEsqOk").onclick=async()=>{ pinPut(null); try{ localStorage.removeItem("lf3-state"); }catch(e){} try{ await idbSet("dir",null); }catch(e){} location.reload(); };
+$("bLock").onclick=()=>pinTrancar();
+// bloqueio automático depois de X minutos sem mexer (ou com o app escondido)
+["pointerdown","keydown","wheel","touchstart"].forEach(t=>document.addEventListener(t,()=>{ if($("pinLock").hidden) pinAtivo=Date.now(); },{passive:true,capture:true}));
+function pinChecar(){ const P=pinGet(); if(!P || !P.min || !$("pinLock").hidden) return; if(Date.now()-pinAtivo > P.min*60000) pinTrancar(); }
+setInterval(pinChecar,15000); document.addEventListener("visibilitychange",()=>{ if(!document.hidden) pinChecar(); });
+function rPin(){
+  const P=pinGet(), box=$("dPin"); pinTopo();
+  if(!PIN_OK){ $("dPinSum").textContent=""; box.innerHTML=`<p class="small muted" style="margin:0">Este navegador não deixa usar PIN aqui. Use o aplicativo instalado ou abra pelo endereço do GitHub.</p>`; return; }
+  const minSel=v=>`<select id="pMin" aria-label="Bloquear depois de">${[[1,"1 minuto"],[5,"5 minutos"],[15,"15 minutos"],[30,"30 minutos"],[0,"só ao abrir"]].map(([m,t])=>`<option value="${m}"${m===v?" selected":""}>${t}</option>`).join("")}</select>`;
+  if(!P){ $("dPinSum").textContent="desligado";
+    box.innerHTML=`<form class="form" id="pNovo" autocomplete="off"><label>Novo PIN (4 a 8 números)<input id="pA" type="password" inputmode="numeric" maxlength="8"></label><label>Repita o PIN<input id="pB" type="password" inputmode="numeric" maxlength="8"></label><label>Bloquear depois de parado${minSel(5)}</label><label style="justify-content:flex-end"><button class="primary" type="submit">Ativar PIN</button></label></form><span class="small" id="pMsg" role="status"></span>`;
+    $("pNovo").onsubmit=async e=>{ e.preventDefault(); const a=$("pA").value.trim(), b=$("pB").value.trim();
+      if(!pinValido(a)){ $("pMsg").textContent="O PIN precisa ter de 4 a 8 números."; return; } if(a!==b){ $("pMsg").textContent="Os dois PINs não são iguais."; return; }
+      if(!(await pinDefinir(a,+$("pMin").value))){ $("pMsg").textContent="Não consegui guardar o PIN neste navegador."; return; }
+      pinAtivo=Date.now(); rPin(); toast("PIN ativado. Ele vai ser pedido ao abrir o leitor."); };
+    return; }
+  $("dPinSum").textContent="ligado";
+  box.innerHTML=`<div class="form"><label>Bloquear depois de parado${minSel(P.min||0)}</label><label class="wide">PIN atual (para trocar ou tirar)<input id="pAt" type="password" inputmode="numeric" maxlength="8"></label><label>Novo PIN (para trocar)<input id="pNv" type="password" inputmode="numeric" maxlength="8"></label></div>
+    <div class="row" style="margin-top:10px"><button type="button" class="primary" id="pTroca">Trocar PIN</button><button type="button" id="pAgora">🔒 Bloquear agora</button><button type="button" class="danger" id="pTira">Tirar PIN</button><span class="small" id="pMsg" role="status"></span></div>`;
+  $("pMin").onchange=()=>{ const Q=pinGet(); Q.min=+$("pMin").value; pinPut(Q); toast(Q.min?`O leitor tranca depois de ${Q.min} minuto(s) parado.`:"O PIN só será pedido ao abrir o leitor."); };
+  $("pAgora").onclick=()=>pinTrancar();
+  $("pTroca").onclick=async()=>{ const at=$("pAt").value.trim(), nv=$("pNv").value.trim();
+    if(!(await pinConfere(at))){ $("pMsg").textContent="PIN atual errado."; return; } if(!pinValido(nv)){ $("pMsg").textContent="O novo PIN precisa ter de 4 a 8 números."; return; }
+    await pinDefinir(nv, pinGet().min); rPin(); toast("PIN trocado."); };
+  $("pTira").onclick=async()=>{ if(!(await pinConfere($("pAt").value.trim()))){ $("pMsg").textContent="Digite o PIN atual para tirar."; return; } pinPut(null); rPin(); toast("PIN desligado."); };
+}
+if(PIN_OK && pinGet()) pinTrancar(); pinTopo();
+
 // ---- aplicativo instalável: guarda a página para abrir sem internet e oferece "Instalar app" ----
 (function(){
   const web=/^https?:$/.test(location.protocol) && !inFrame;

@@ -359,6 +359,15 @@ main.wrap{gap:20px}
 button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-radius:16px;box-shadow:0 10px 24px rgba(23,128,107,.28)}
 #cvSkip{align-self:center;font-size:.9rem}
 .cvsummary{display:flex;flex-direction:column;gap:18px}
+/* PIN */
+#pinLock{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:#eef2f0}
+.pincard{width:min(360px,100%);background:#fff;border:1px solid #edf1ef;border-radius:24px;padding:28px 24px;box-shadow:0 20px 50px rgba(31,42,39,.12);display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.pinic{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;background:var(--accent-soft)}
+#pinIn{font:inherit;font-family:var(--f-num);font-size:1.6rem;letter-spacing:.5em;text-align:center;width:100%;padding:12px;border:1px solid #e3e9e6;border-radius:14px}
+#pinIn:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.pincard button.big{width:100%}
+.pinerr{color:var(--out);font-weight:700;font-size:.88rem;min-height:1.2em}
+#dPin .form{max-width:640px}
 /* tela de carregando */
 #loading{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:16px;background:rgba(247,249,248,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .ldcard{width:min(380px,100%);background:#fff;border:1px solid #edf1ef;border-radius:24px;padding:28px 24px;box-shadow:0 20px 50px rgba(31,42,39,.12);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
@@ -485,6 +494,18 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
     <div class="foot" id="cvFoot">Seus arquivos são lidos só neste computador.</div>
   </div>
 </div>
+<div id="pinLock" role="dialog" aria-modal="true" aria-labelledby="pinTitle" hidden>
+  <form class="pincard" id="pinForm" autocomplete="off">
+    <div class="pinic" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#17806b" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+    <h2 id="pinTitle">Leitor de Faturas</h2>
+    <p class="muted small" style="margin:0">Digite seu PIN para abrir</p>
+    <input id="pinIn" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" aria-label="PIN">
+    <span class="pinerr" id="pinErr" role="alert"></span>
+    <button class="primary big" type="submit" id="pinGo">Entrar</button>
+    <button class="ghost" type="button" id="pinEsq">Esqueci o PIN</button>
+    <p class="small muted" id="pinEsqTxt" hidden style="margin:0">Para tirar o PIN, apago a cópia dos dados guardada neste navegador. O que está na sua pasta continua lá: é só conectar a pasta de novo. <button class="danger" type="button" id="pinEsqOk">Apagar e tirar o PIN</button></p>
+  </form>
+</div>
 <div id="loading" role="status" aria-live="polite" hidden>
   <div class="ldcard">
     <div class="spin" aria-hidden="true"></div>
@@ -500,6 +521,7 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
     <span id="folderPill" class="pill"><span class="dot"></span><span id="folderTxt">Sem pasta conectada</span></span>
     <button id="bDir" class="primary" type="button">Conectar pasta</button>
     <button id="bRescan" type="button" hidden>Ler pasta de novo</button>
+    <button id="bLock" type="button" hidden title="Bloquear agora (pede o PIN para abrir)">🔒 Bloquear</button>
     <button id="bInstall" type="button" hidden title="Instala o leitor como aplicativo neste computador">Instalar app</button>
   </div>
 </div></div>
@@ -690,6 +712,11 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
         <p class="small muted" style="margin:6px 0 0">Para cartão cuja fatura não dá para ler. Depois lance as compras em Cartões › “+ Lançar compra no cartão”.</p>
       </details>
       <p class="small muted" style="margin:0">Fecha: compras a partir desse dia vão para a fatura seguinte. Vence: dia de pagar; se for antes do fechamento, a fatura conta no mês seguinte.</p>
+    </div>
+    <div class="panel" id="dPinPanel">
+      <header><h2>Segurança: PIN</h2><span class="small muted" id="dPinSum"></span></header>
+      <div id="dPin"></div>
+      <p class="small muted" style="margin:0">O PIN tranca a tela do leitor neste computador ou celular (cada aparelho tem o seu). Ele protege contra olhos curiosos; os arquivos da pasta continuam no seu computador como sempre.</p>
     </div>
     <div class="panel" id="dCatsPanel">
       <header><h2>Categorias e subcategorias</h2><span class="small muted" id="dCatSum"></span></header>
