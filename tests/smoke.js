@@ -44,6 +44,8 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     ok(r.resumo, `${nome}: capa mostra o resumo depois de ler`);
     await page.click("#cvGo"); await page.waitForTimeout(500);
     await page.evaluate(() => { selMonth = ITEMS.find(i => i.est).m; render(); });
+    ok(await page.evaluate(async () => { await gravarAgora(); const a = document.getElementById("bNuvem").dataset.st; state.edicoes["teste-nuvem"] = { cat: "X" }; const b = estadoNuvem();
+      document.getElementById("bNuvem").click(); await new Promise(r => setTimeout(r, 300)); const c = document.getElementById("bNuvem").dataset.st; delete state.edicoes["teste-nuvem"]; await gravarAgora(); return a === "ok" && b === "pend" && c === "ok"; }), `${nome}: nuvem mostra ✓ salvo, ✗ quando falta salvar e grava ao tocar`);
     ok(await page.isVisible("#estBar"), `${nome}: aviso de estornos aparece no Resumo`);
     ok(await page.evaluate(() => { go("cartoes"); selCards = null; render(); const b = document.getElementById("cZerShow"); return !!b && ![...document.querySelectorAll("#cTx tr")].some(tr => /Loja Devolvida/.test(tr.textContent)); }), `${nome}: compra estornada fica escondida na lista Todas`);
     await page.evaluate(() => go("resumo"));

@@ -506,6 +506,16 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
 .mtip{position:absolute;pointer-events:none;background:#fff;border:1px solid #e3e9e6;border-radius:10px;box-shadow:0 8px 24px rgba(31,42,39,.12);padding:8px 10px;font-size:.8rem;line-height:1.45;white-space:nowrap;z-index:3}
 .mtip b{font-family:var(--f-display)} .mtip .num{float:right;margin-left:14px}
 @media (max-width:640px){ .donutwrap{grid-template-columns:minmax(0,1fr)} .donut{margin:0 auto} .barrow.sub{padding-left:14px} }
+/* nuvem: situação do salvamento */
+button.nuvem{padding:6px 9px}
+button.nuvem .nv-ok,button.nuvem .nv-x,button.nuvem .nv-p{display:none}
+button.nuvem[data-st="ok"]{color:var(--accent);border-color:#cfe7df;background:var(--accent-soft)}
+button.nuvem[data-st="ok"] .nv-ok{display:inline}
+button.nuvem[data-st="erro"],button.nuvem[data-st="desc"]{color:var(--out);border-color:#e9c3b6;background:var(--out-soft)}
+button.nuvem[data-st="erro"] .nv-x,button.nuvem[data-st="desc"] .nv-x{display:inline}
+button.nuvem[data-st="pend"]{color:#8a5a00;border-color:#f1dfa6;background:#fdf3d8}
+button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out infinite}
+@keyframes nvp{50%{opacity:.25}}
 /* v2.8: celular mais compacto */
 .folder button .bi{display:none}
 @media (max-width:640px){
@@ -602,6 +612,7 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
     <span id="folderPill" class="pill"><span class="dot"></span><span id="folderTxt">Sem pasta conectada</span></span>
     <button id="bDir" class="primary sem" type="button" title="Escolher a pasta das faturas"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="bl">Conectar pasta</span></button>
     <button id="bRescan" type="button" hidden title="Ler pasta de novo" aria-label="Ler pasta de novo"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3.9M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9M20 20v-4h-4"/></svg><span class="bl">Ler pasta de novo</span></button>
+    <button id="bNuvem" type="button" class="nuvem" data-st="pend" title="Salvando…" aria-label="Situação do salvamento"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5z"/><path class="nv-ok" d="M9.2 13.6l2 2 3.8-4"/><path class="nv-x" d="M10 11.5l4 4M14 11.5l-4 4"/><circle class="nv-p" cx="12" cy="13.5" r="1.3" fill="currentColor" stroke="none"/></svg></button>
     <button id="bEye" type="button" class="eye" aria-pressed="false" title="Esconder os valores" aria-label="Esconder ou mostrar os valores"><svg id="eyeOn" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg id="eyeOff" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="display:none"><path d="M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.8 0 3.4-.5 4.8-1.3M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
     <button id="bLock" type="button" hidden title="Bloquear agora (pede o PIN para abrir)" aria-label="Bloquear"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="bl">Bloquear</span></button>
     <button id="bInstall" type="button" hidden title="Instala o leitor como aplicativo neste aparelho" aria-label="Instalar app"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="bl">Instalar app</span></button>
@@ -1112,7 +1123,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.15";
+const VERSAO="2.16";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1156,17 +1167,43 @@ function lsSet(txt){ try{ localStorage.setItem("lf3-state",txt||JSON.stringify(s
 function hhmm(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
 function bDirTxt(t,sem){ const b=$("bDir"); b.querySelector(".bl").textContent=t; b.setAttribute("aria-label",t); b.title=t; b.classList.toggle("sem",!!sem); }
 function setFolder(txt, cls){ $("folderTxt").textContent=txt; $("folderPill").className="pill"+(cls?" "+cls:""); }
+// ---- gravação + nuvem do topo ----
+// salvoCmp = o que está gravado no JSON da pasta; lsCmp = o que está no navegador. A cada 5 s a nuvem confere
+// se o estado atual é igual ao gravado: ✓ tudo salvo, ✗ falta salvar (e grava sozinha), toque = gravar agora.
+let salvoCmp=null, lsCmp=null, salvando=null, erroSalvar=false, salvoHora="";
 function save(){
-  state.atualizado=new Date().toISOString(); const lsOk=lsSet();
-  if(dirHandle){
-    clearTimeout(saveTimer);
-    saveTimer=setTimeout(async()=>{
-      try{ const fh=await dirHandle.getFileHandle(JSON_NAME,{create:true}); const w=await fh.createWritable(); await w.write(JSON.stringify(state,null,1)); await w.close();
-        setFolder(`${dirHandle.name} · salvo às ${hhmm()}`,"ok"); $("saveStatus").textContent=`Dados gravados em ${dirHandle.name}/${JSON_NAME}.`; }
-      catch(e){ setFolder("Não consegui gravar o JSON","warn"); }
-    },500);
-  } else { $("saveStatus").textContent= lsOk? `Salvo neste navegador às ${hhmm()}.` : "Não consegui salvar neste navegador (memória cheia). Em Dados, use Salvar JSON para guardar uma cópia."; }
+  state.atualizado=new Date().toISOString();
+  clearTimeout(saveTimer); saveTimer=setTimeout(()=>gravarAgora(), dirHandle?500:0); nuvem();
 }
+function gravarAgora(){
+  if(salvando) return salvando.then(()=>gravarAgora());
+  salvando=(async()=>{
+    const cmp=JSON.stringify(state), lsOk=lsSet(cmp); if(lsOk) lsCmp=cmp;
+    if(dirHandle){
+      try{ const fh=await dirHandle.getFileHandle(JSON_NAME,{create:true}); const w=await fh.createWritable(); await w.write(JSON.stringify(state,null,1)); await w.close();
+        salvoCmp=cmp; erroSalvar=false; salvoHora=hhmm();
+        setFolder(`${dirHandle.name} · salvo às ${salvoHora}`,"ok"); $("saveStatus").textContent=`Dados gravados em ${dirHandle.name}/${JSON_NAME}.`; }
+      catch(e){ erroSalvar=true; setFolder("Não consegui gravar o JSON","warn"); }
+    } else { if(lsOk) salvoHora=hhmm(); $("saveStatus").textContent= lsOk? `Salvo neste navegador às ${salvoHora}.` : "Não consegui salvar neste navegador (memória cheia). Em Dados, use Salvar JSON para guardar uma cópia."; }
+  })().finally(()=>{ salvando=null; nuvem(); });
+  return salvando;
+}
+function estadoNuvem(){ try{ return estadoNuvem0(); }catch(e){ return "pend"; } }
+function estadoNuvem0(){
+  const cmp=JSON.stringify(state);
+  if(dirHandle) return erroSalvar? "erro" : cmp===salvoCmp? "ok" : "pend";
+  if(FS_OK && savedName) return "desc";            // pasta conhecida mas sem permissão: só está no navegador
+  return cmp===lsCmp? "ok" : "pend";
+}
+function nuvem(){ const b=$("bNuvem"); if(!b) return; const e=salvando? "pend" : estadoNuvem();
+  const onde= dirHandle? `na pasta ${dirHandle.name}` : "neste navegador";
+  const txt={ok:`Tudo salvo ${onde}${salvoHora?" às "+salvoHora:""}`, pend:"Salvando… toque para salvar agora", erro:"Não consegui salvar na pasta. Toque para tentar de novo", desc:"Salvo só neste navegador: toque para reconectar a pasta"}[e];
+  b.dataset.st=e; b.title=txt; b.setAttribute("aria-label",txt); }
+setInterval(()=>{ if(!salvando && estadoNuvem()==="pend") gravarAgora(); else nuvem(); },5000);
+// ao sair do app ou trocar de aplicativo, grava na hora o que faltar
+const gravarAoSair=()=>{ const e=estadoNuvem(); if(e==="pend"||e==="erro"||e==="desc"){ clearTimeout(saveTimer); gravarAgora(); } };
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) gravarAoSair(); });
+window.addEventListener("pagehide",gravarAoSair);
 let toastTimer=null;
 function toast(html, actions){
   const t=$("toast"); t.innerHTML=`<span>${html}</span>`+(actions||[]).map((a,i)=>`<button type="button" data-i="${i}">${esc(a.label)}</button>`).join("");
@@ -2229,6 +2266,9 @@ $("pinForm").onsubmit=async e=>{ e.preventDefault(); const v=$("pinIn").value.tr
 $("pinEsq").onclick=()=>{ $("pinEsqTxt").hidden=false; };
 $("pinEsqOk").onclick=async()=>{ pinPut(null); try{ localStorage.removeItem("lf3-state"); }catch(e){} try{ await idbSet("dir",null); }catch(e){} location.reload(); };
 $("bLock").onclick=()=>pinTrancar();
+$("bNuvem").onclick=async()=>{ if(estadoNuvem()==="desc"){ $("bDir").click(); return; }
+  clearTimeout(saveTimer); await gravarAgora(); const e=estadoNuvem();
+  toast(e==="ok"? `Tudo salvo ${dirHandle?"na pasta "+esc(dirHandle.name):"neste navegador"} às ${salvoHora}.` : "Não consegui salvar agora. Confira a pasta em Dados e tente de novo."); };
 $("pinX").onclick=()=>{ $("pinLock").hidden=true; };
 // olhinho: esconde/mostra os valores; depois de esconder sozinho (tempo parado), mostrar de novo pede o PIN
 let ocultoAuto=false;

@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.15";
+const VERSAO="2.16";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -62,17 +62,43 @@ function lsSet(txt){ try{ localStorage.setItem("lf3-state",txt||JSON.stringify(s
 function hhmm(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
 function bDirTxt(t,sem){ const b=$("bDir"); b.querySelector(".bl").textContent=t; b.setAttribute("aria-label",t); b.title=t; b.classList.toggle("sem",!!sem); }
 function setFolder(txt, cls){ $("folderTxt").textContent=txt; $("folderPill").className="pill"+(cls?" "+cls:""); }
+// ---- gravação + nuvem do topo ----
+// salvoCmp = o que está gravado no JSON da pasta; lsCmp = o que está no navegador. A cada 5 s a nuvem confere
+// se o estado atual é igual ao gravado: ✓ tudo salvo, ✗ falta salvar (e grava sozinha), toque = gravar agora.
+let salvoCmp=null, lsCmp=null, salvando=null, erroSalvar=false, salvoHora="";
 function save(){
-  state.atualizado=new Date().toISOString(); const lsOk=lsSet();
-  if(dirHandle){
-    clearTimeout(saveTimer);
-    saveTimer=setTimeout(async()=>{
-      try{ const fh=await dirHandle.getFileHandle(JSON_NAME,{create:true}); const w=await fh.createWritable(); await w.write(JSON.stringify(state,null,1)); await w.close();
-        setFolder(`${dirHandle.name} · salvo às ${hhmm()}`,"ok"); $("saveStatus").textContent=`Dados gravados em ${dirHandle.name}/${JSON_NAME}.`; }
-      catch(e){ setFolder("Não consegui gravar o JSON","warn"); }
-    },500);
-  } else { $("saveStatus").textContent= lsOk? `Salvo neste navegador às ${hhmm()}.` : "Não consegui salvar neste navegador (memória cheia). Em Dados, use Salvar JSON para guardar uma cópia."; }
+  state.atualizado=new Date().toISOString();
+  clearTimeout(saveTimer); saveTimer=setTimeout(()=>gravarAgora(), dirHandle?500:0); nuvem();
 }
+function gravarAgora(){
+  if(salvando) return salvando.then(()=>gravarAgora());
+  salvando=(async()=>{
+    const cmp=JSON.stringify(state), lsOk=lsSet(cmp); if(lsOk) lsCmp=cmp;
+    if(dirHandle){
+      try{ const fh=await dirHandle.getFileHandle(JSON_NAME,{create:true}); const w=await fh.createWritable(); await w.write(JSON.stringify(state,null,1)); await w.close();
+        salvoCmp=cmp; erroSalvar=false; salvoHora=hhmm();
+        setFolder(`${dirHandle.name} · salvo às ${salvoHora}`,"ok"); $("saveStatus").textContent=`Dados gravados em ${dirHandle.name}/${JSON_NAME}.`; }
+      catch(e){ erroSalvar=true; setFolder("Não consegui gravar o JSON","warn"); }
+    } else { if(lsOk) salvoHora=hhmm(); $("saveStatus").textContent= lsOk? `Salvo neste navegador às ${salvoHora}.` : "Não consegui salvar neste navegador (memória cheia). Em Dados, use Salvar JSON para guardar uma cópia."; }
+  })().finally(()=>{ salvando=null; nuvem(); });
+  return salvando;
+}
+function estadoNuvem(){ try{ return estadoNuvem0(); }catch(e){ return "pend"; } }
+function estadoNuvem0(){
+  const cmp=JSON.stringify(state);
+  if(dirHandle) return erroSalvar? "erro" : cmp===salvoCmp? "ok" : "pend";
+  if(FS_OK && savedName) return "desc";            // pasta conhecida mas sem permissão: só está no navegador
+  return cmp===lsCmp? "ok" : "pend";
+}
+function nuvem(){ const b=$("bNuvem"); if(!b) return; const e=salvando? "pend" : estadoNuvem();
+  const onde= dirHandle? `na pasta ${dirHandle.name}` : "neste navegador";
+  const txt={ok:`Tudo salvo ${onde}${salvoHora?" às "+salvoHora:""}`, pend:"Salvando… toque para salvar agora", erro:"Não consegui salvar na pasta. Toque para tentar de novo", desc:"Salvo só neste navegador: toque para reconectar a pasta"}[e];
+  b.dataset.st=e; b.title=txt; b.setAttribute("aria-label",txt); }
+setInterval(()=>{ if(!salvando && estadoNuvem()==="pend") gravarAgora(); else nuvem(); },5000);
+// ao sair do app ou trocar de aplicativo, grava na hora o que faltar
+const gravarAoSair=()=>{ const e=estadoNuvem(); if(e==="pend"||e==="erro"||e==="desc"){ clearTimeout(saveTimer); gravarAgora(); } };
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) gravarAoSair(); });
+window.addEventListener("pagehide",gravarAoSair);
 let toastTimer=null;
 function toast(html, actions){
   const t=$("toast"); t.innerHTML=`<span>${html}</span>`+(actions||[]).map((a,i)=>`<button type="button" data-i="${i}">${esc(a.label)}</button>`).join("");
@@ -1135,6 +1161,9 @@ $("pinForm").onsubmit=async e=>{ e.preventDefault(); const v=$("pinIn").value.tr
 $("pinEsq").onclick=()=>{ $("pinEsqTxt").hidden=false; };
 $("pinEsqOk").onclick=async()=>{ pinPut(null); try{ localStorage.removeItem("lf3-state"); }catch(e){} try{ await idbSet("dir",null); }catch(e){} location.reload(); };
 $("bLock").onclick=()=>pinTrancar();
+$("bNuvem").onclick=async()=>{ if(estadoNuvem()==="desc"){ $("bDir").click(); return; }
+  clearTimeout(saveTimer); await gravarAgora(); const e=estadoNuvem();
+  toast(e==="ok"? `Tudo salvo ${dirHandle?"na pasta "+esc(dirHandle.name):"neste navegador"} às ${salvoHora}.` : "Não consegui salvar agora. Confira a pasta em Dados e tente de novo."); };
 $("pinX").onclick=()=>{ $("pinLock").hidden=true; };
 // olhinho: esconde/mostra os valores; depois de esconder sozinho (tempo parado), mostrar de novo pede o PIN
 let ocultoAuto=false;

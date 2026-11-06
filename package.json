@@ -1,6 +1,6 @@
 {
   "name": "leitor-faturas",
-  "version": "2.15.0",
+  "version": "2.16.0",
   "private": true,
   "description": "Leitor de faturas de cartão que roda no navegador (HTML único).",
   "scripts": {
