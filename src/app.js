@@ -1,4 +1,7 @@
-const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
+const BRL0=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
+// modo oculto (olhinho no topo): todos os valores em R$ viram "R$ •••"
+let oculto=false; try{ oculto=localStorage.getItem("lf-oculto")==="1"; }catch(e){}
+const BRL={format:v=>oculto? "R$ •••" : BRL0.format(v)};
 const MLONG=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const fmtM=m=>MESES[m%12]+"/"+String(Math.floor(m/12)).slice(2);
 const fmtMLong=m=>MLONG[m%12]+" "+Math.floor(m/12);
@@ -15,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.5";
+const VERSAO="2.6";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1060,41 +1063,58 @@ async function pinDefinir(pin, min){ const salt=[...crypto.getRandomValues(new U
   return pinPut({salt, hash:await pinHash(pin,salt), min: min==null? 5 : min}); }
 const pinValido=v=>/^\d{4,8}$/.test(v);
 let pinAtivo=0, pinErros=0, pinEspera=0;
-function pinTrancar(){ if(!pinGet()) return; const L=$("pinLock"); L.hidden=false; $("pinIn").value=""; $("pinErr").textContent=""; $("pinEsqTxt").hidden=true; setTimeout(()=>$("pinIn").focus(),30); }
+let pinModo="abrir";
+function pinTrancar(modo){ if(!pinGet()) return; pinModo=modo||"abrir"; const L=$("pinLock"); L.hidden=false; $("pinIn").value="";
+  $("pinMsg").textContent= pinModo==="mostrar"? "Digite seu PIN para mostrar os valores" : "Digite seu PIN para abrir"; $("pinX").hidden= pinModo!=="mostrar"; $("pinErr").textContent=""; $("pinEsqTxt").hidden=true; setTimeout(()=>$("pinIn").focus(),30); }
 function pinTopo(){ $("bLock").hidden=!pinGet(); }
 $("pinForm").onsubmit=async e=>{ e.preventDefault(); const v=$("pinIn").value.trim();
   if(Date.now()<pinEspera){ $("pinErr").textContent=`Muitas tentativas. Espere ${Math.ceil((pinEspera-Date.now())/1000)} segundos.`; return; }
-  if(await pinConfere(v)){ pinErros=0; pinAtivo=Date.now(); $("pinLock").hidden=true; return; }
+  if(await pinConfere(v)){ pinErros=0; pinAtivo=Date.now(); $("pinLock").hidden=true;
+    if(pinModo==="mostrar") setOculto(false,true);
+    else { closeCoverNow(); go("resumo"); } // depois do PIN, entra direto no Resumo
+    return; }
   pinErros++; $("pinIn").value=""; if(pinErros>=5){ pinEspera=Date.now()+30000; pinErros=0; $("pinErr").textContent="PIN errado 5 vezes. Espere 30 segundos."; } else $("pinErr").textContent="PIN errado. Tente de novo."; };
 $("pinEsq").onclick=()=>{ $("pinEsqTxt").hidden=false; };
 $("pinEsqOk").onclick=async()=>{ pinPut(null); try{ localStorage.removeItem("lf3-state"); }catch(e){} try{ await idbSet("dir",null); }catch(e){} location.reload(); };
 $("bLock").onclick=()=>pinTrancar();
+$("pinX").onclick=()=>{ $("pinLock").hidden=true; };
+// olhinho: esconde/mostra os valores; depois de esconder sozinho (tempo parado), mostrar de novo pede o PIN
+let ocultoAuto=false;
+function setOculto(v, semPin){
+  if(!v && ocultoAuto && pinGet() && !semPin){ pinTrancar("mostrar"); return; }
+  oculto=v; if(!v) ocultoAuto=false; try{ localStorage.setItem("lf-oculto",v?"1":"0"); }catch(e){}
+  document.body.classList.toggle("oculto",v); const b=$("bEye"); b.setAttribute("aria-pressed",v); b.title= v? "Mostrar os valores" : "Esconder os valores";
+  $("eyeOn").style.display= v? "none":""; $("eyeOff").style.display= v? "":"none"; render();
+}
+$("bEye").onclick=()=>setOculto(!oculto);
 // bloqueio automático depois de X minutos sem mexer (ou com o app escondido)
 ["pointerdown","keydown","wheel","touchstart"].forEach(t=>document.addEventListener(t,()=>{ if($("pinLock").hidden) pinAtivo=Date.now(); },{passive:true,capture:true}));
-function pinChecar(){ const P=pinGet(); if(!P || !P.min || !$("pinLock").hidden) return; if(Date.now()-pinAtivo > P.min*60000) pinTrancar(); }
+// tempo parado: liga o modo oculto (com PIN, mostrar os valores de novo pede o PIN)
+function pinChecar(){ const P=pinGet(); if(!P || !P.min || !$("pinLock").hidden || oculto) return; if(Date.now()-pinAtivo > P.min*60000){ ocultoAuto=true; setOculto(true); } }
 setInterval(pinChecar,15000); document.addEventListener("visibilitychange",()=>{ if(!document.hidden) pinChecar(); });
 function rPin(){
   const P=pinGet(), box=$("dPin"); pinTopo();
   if(!PIN_OK){ $("dPinSum").textContent=""; box.innerHTML=`<p class="small muted" style="margin:0">Este navegador não deixa usar PIN aqui. Use o aplicativo instalado ou abra pelo endereço do GitHub.</p>`; return; }
-  const minSel=v=>`<select id="pMin" aria-label="Bloquear depois de">${[[1,"1 minuto"],[5,"5 minutos"],[15,"15 minutos"],[30,"30 minutos"],[0,"só ao abrir"]].map(([m,t])=>`<option value="${m}"${m===v?" selected":""}>${t}</option>`).join("")}</select>`;
+  const minSel=v=>`<select id="pMin" aria-label="Esconder os valores depois de">${[[1,"1 minuto"],[5,"5 minutos"],[15,"15 minutos"],[30,"30 minutos"],[0,"nunca (só PIN ao abrir)"]].map(([m,t])=>`<option value="${m}"${m===v?" selected":""}>${t}</option>`).join("")}</select>`;
   if(!P){ $("dPinSum").textContent="desligado";
-    box.innerHTML=`<form class="form" id="pNovo" autocomplete="off"><label>Novo PIN (4 a 8 números)<input id="pA" type="password" inputmode="numeric" maxlength="8"></label><label>Repita o PIN<input id="pB" type="password" inputmode="numeric" maxlength="8"></label><label>Bloquear depois de parado${minSel(5)}</label><label style="justify-content:flex-end"><button class="primary" type="submit">Ativar PIN</button></label></form><span class="small" id="pMsg" role="status"></span>`;
+    box.innerHTML=`<form class="form" id="pNovo" autocomplete="off"><label>Novo PIN (4 a 8 números)<input id="pA" type="password" inputmode="numeric" maxlength="8"></label><label>Repita o PIN<input id="pB" type="password" inputmode="numeric" maxlength="8"></label><label>Esconder valores depois de parado${minSel(5)}</label><label style="justify-content:flex-end"><button class="primary" type="submit">Ativar PIN</button></label></form><span class="small" id="pMsg" role="status"></span>`;
     $("pNovo").onsubmit=async e=>{ e.preventDefault(); const a=$("pA").value.trim(), b=$("pB").value.trim();
       if(!pinValido(a)){ $("pMsg").textContent="O PIN precisa ter de 4 a 8 números."; return; } if(a!==b){ $("pMsg").textContent="Os dois PINs não são iguais."; return; }
       if(!(await pinDefinir(a,+$("pMin").value))){ $("pMsg").textContent="Não consegui guardar o PIN neste navegador."; return; }
       pinAtivo=Date.now(); rPin(); toast("PIN ativado. Ele vai ser pedido ao abrir o leitor."); };
     return; }
   $("dPinSum").textContent="ligado";
-  box.innerHTML=`<div class="form"><label>Bloquear depois de parado${minSel(P.min||0)}</label><label class="wide">PIN atual (para trocar ou tirar)<input id="pAt" type="password" inputmode="numeric" maxlength="8"></label><label>Novo PIN (para trocar)<input id="pNv" type="password" inputmode="numeric" maxlength="8"></label></div>
+  box.innerHTML=`<div class="form"><label>Esconder valores depois de parado${minSel(P.min||0)}</label><label class="wide">PIN atual (para trocar ou tirar)<input id="pAt" type="password" inputmode="numeric" maxlength="8"></label><label>Novo PIN (para trocar)<input id="pNv" type="password" inputmode="numeric" maxlength="8"></label></div>
     <div class="row" style="margin-top:10px"><button type="button" class="primary" id="pTroca">Trocar PIN</button><button type="button" id="pAgora">🔒 Bloquear agora</button><button type="button" class="danger" id="pTira">Tirar PIN</button><span class="small" id="pMsg" role="status"></span></div>`;
-  $("pMin").onchange=()=>{ const Q=pinGet(); Q.min=+$("pMin").value; pinPut(Q); toast(Q.min?`O leitor tranca depois de ${Q.min} minuto(s) parado.`:"O PIN só será pedido ao abrir o leitor."); };
+  $("pMin").onchange=()=>{ const Q=pinGet(); Q.min=+$("pMin").value; pinPut(Q); toast(Q.min?`Os valores ficam ocultos depois de ${Q.min} minuto(s) parado; para mostrar, peço o PIN.`:"O PIN só será pedido ao abrir o leitor."); };
   $("pAgora").onclick=()=>pinTrancar();
   $("pTroca").onclick=async()=>{ const at=$("pAt").value.trim(), nv=$("pNv").value.trim();
     if(!(await pinConfere(at))){ $("pMsg").textContent="PIN atual errado."; return; } if(!pinValido(nv)){ $("pMsg").textContent="O novo PIN precisa ter de 4 a 8 números."; return; }
     await pinDefinir(nv, pinGet().min); rPin(); toast("PIN trocado."); };
   $("pTira").onclick=async()=>{ if(!(await pinConfere($("pAt").value.trim()))){ $("pMsg").textContent="Digite o PIN atual para tirar."; return; } pinPut(null); rPin(); toast("PIN desligado."); };
 }
-if(PIN_OK && pinGet()) pinTrancar(); pinTopo();
+if(PIN_OK && pinGet()){ pinTrancar(); $("cover").hidden=true; } pinTopo();
+document.body.classList.toggle("oculto",oculto); $("bEye").setAttribute("aria-pressed",oculto); $("eyeOn").style.display= oculto? "none":""; $("eyeOff").style.display= oculto? "":"none";
 
 // ---- aplicativo instalável: guarda a página para abrir sem internet e oferece "Instalar app" ----
 (function(){

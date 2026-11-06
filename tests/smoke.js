@@ -102,6 +102,17 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     ok(await page.isVisible("#pinLock") && /errado/.test(await page.textContent("#pinErr")), `${nome}: PIN errado não abre`);
     await page.fill("#pinIn", "1234"); await page.press("#pinIn", "Enter"); await page.waitForTimeout(600);
     ok(!(await page.isVisible("#pinLock")), `${nome}: PIN certo abre`);
+    ok(await page.evaluate(() => tab === "resumo" && document.getElementById("cover").hidden), `${nome}: depois do PIN entra no Resumo`);
+    await page.click("#bEye"); await page.waitForTimeout(100);
+    ok(await page.evaluate(() => /•••/.test(document.getElementById("kOut").textContent)), `${nome}: olhinho esconde os valores`);
+    await page.click("#bEye"); await page.waitForTimeout(100);
+    ok(await page.evaluate(() => /\d/.test(document.getElementById("kOut").textContent) && !/•/.test(document.getElementById("kOut").textContent)), `${nome}: olhinho mostra de novo`);
+    await page.evaluate(() => { pinAtivo = Date.now() - 6 * 60000; pinChecar(); }); await page.waitForTimeout(100);
+    ok(await page.evaluate(() => oculto && /•••/.test(document.getElementById("kOut").textContent)), `${nome}: tempo parado liga o modo oculto`);
+    await page.click("#bEye"); await page.waitForTimeout(100);
+    ok(await page.isVisible("#pinLock"), `${nome}: mostrar depois do tempo pede o PIN`);
+    await page.fill("#pinIn", "1234"); await page.press("#pinIn", "Enter"); await page.waitForTimeout(600);
+    ok(await page.evaluate(() => !oculto && document.getElementById("pinLock").hidden), `${nome}: PIN mostra os valores`);
     await page.evaluate(() => go("dados")); await page.fill("#pAt", "1234"); await page.click("#pTira"); await page.waitForTimeout(600);
     ok(await page.evaluate(() => !pinGet()), `${nome}: tira o PIN`);
     ok(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)), `${nome}: sem rolagem lateral na página`);

@@ -359,6 +359,12 @@ main.wrap{gap:20px}
 button.big{justify-content:center;font-size:1.05rem;padding:15px 22px;border-radius:16px;box-shadow:0 10px 24px rgba(23,128,107,.28)}
 #cvSkip{align-self:center;font-size:.9rem}
 .cvsummary{display:flex;flex-direction:column;gap:18px}
+/* modo oculto */
+button.eye{padding:8px 10px}
+@media (max-width:640px){ .top .wrap{position:relative} button.eye{position:absolute;top:8px;right:max(16px, env(safe-area-inset-right,0px))} }
+button.eye[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:#cfe7df}
+body.oculto .sheet input.num, body.oculto td.v input, body.oculto .mchart svg text, body.oculto .mtip .num, body.oculto #caVal{filter:blur(6px)}
+body.oculto .sheet input.num:focus, body.oculto #caVal:focus{filter:none}
 /* PIN */
 #pinLock{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:#eef2f0}
 .pincard{width:min(360px,100%);background:#fff;border:1px solid #edf1ef;border-radius:24px;padding:28px 24px;box-shadow:0 20px 50px rgba(31,42,39,.12);display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
@@ -498,10 +504,11 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
   <form class="pincard" id="pinForm" autocomplete="off">
     <div class="pinic" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#17806b" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
     <h2 id="pinTitle">Leitor de Faturas</h2>
-    <p class="muted small" style="margin:0">Digite seu PIN para abrir</p>
+    <p class="muted small" style="margin:0" id="pinMsg">Digite seu PIN para abrir</p>
     <input id="pinIn" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" aria-label="PIN">
     <span class="pinerr" id="pinErr" role="alert"></span>
     <button class="primary big" type="submit" id="pinGo">Entrar</button>
+    <button class="ghost" type="button" id="pinX" hidden>Continuar com os valores ocultos</button>
     <button class="ghost" type="button" id="pinEsq">Esqueci o PIN</button>
     <p class="small muted" id="pinEsqTxt" hidden style="margin:0">Para tirar o PIN, apago a cópia dos dados guardada neste navegador. O que está na sua pasta continua lá: é só conectar a pasta de novo. <button class="danger" type="button" id="pinEsqOk">Apagar e tirar o PIN</button></p>
   </form>
@@ -521,6 +528,7 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
     <span id="folderPill" class="pill"><span class="dot"></span><span id="folderTxt">Sem pasta conectada</span></span>
     <button id="bDir" class="primary" type="button">Conectar pasta</button>
     <button id="bRescan" type="button" hidden>Ler pasta de novo</button>
+    <button id="bEye" type="button" class="eye" aria-pressed="false" title="Esconder os valores" aria-label="Esconder ou mostrar os valores"><svg id="eyeOn" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg id="eyeOff" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="display:none"><path d="M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.8 0 3.4-.5 4.8-1.3M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
     <button id="bLock" type="button" hidden title="Bloquear agora (pede o PIN para abrir)">🔒 Bloquear</button>
     <button id="bInstall" type="button" hidden title="Instala o leitor como aplicativo neste computador">Instalar app</button>
   </div>
