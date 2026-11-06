@@ -51,6 +51,10 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     await page.evaluate(() => go("resumo"));
     ok(await page.evaluate(() => { const b = document.querySelector("#rCats [data-tog]"); const sub = b.parentElement.querySelector(".barrow.sub"); const antes = sub.offsetParent === null; b.click(); return antes && sub.offsetParent !== null; }), `${nome}: subcategorias começam fechadas e abrem ao tocar`);
     ok(await page.evaluate(() => /R\$/.test(document.getElementById("kCom").textContent)), `${nome}: card de orçamento comprometido`);
+    await page.click("#dgRun"); await page.waitForTimeout(150);
+    ok(await page.evaluate(() => { const o = document.getElementById("dgOut"); return !o.hidden && o.querySelectorAll("details.dgsec").length === 7 && !!o.querySelector(".dgtop"); }), `${nome}: diagnóstico mostra o resumo e as 7 análises`);
+    ok(await page.evaluate(() => { const d = document.querySelector('#dgOut details[data-dg="sim"]'); d.open = true; const s = d.querySelector("[data-sim]"); if (!s) return true; s.value = "50"; s.dispatchEvent(new Event("change")); const ok1 = /Economia/.test(document.getElementById("dgSimTot").textContent); s.value = "0"; s.dispatchEvent(new Event("change")); return ok1; }), `${nome}: simulador calcula a economia`);
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${nome}: diagnóstico sem rolagem lateral`);
     await page.click('.tile[data-dw="kOut"]'); await page.waitForTimeout(150);
     ok(await page.evaluate(() => !document.getElementById("drawer").hidden && document.querySelectorAll("#dwBody details").length > 0 && document.getElementById("dwTot").textContent === document.getElementById("kOut").textContent), `${nome}: card Saídas abre o painel com as categorias`);
     await page.click("#dwX"); await page.click('.tile[data-dw="kCom"]'); await page.waitForTimeout(150);

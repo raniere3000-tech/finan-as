@@ -71,6 +71,29 @@ main.wrap{display:flex;flex-direction:column;gap:18px;padding-block:6px 60px}
 .tile .sub{font-size:.82rem;color:var(--muted)}
 .in{color:var(--in)} .out{color:var(--out)}
 .grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+/* v2.21: diagnóstico "Onde dá para economizar" */
+.dgout{display:flex;flex-direction:column;gap:10px}
+.dgtop{background:var(--accent-soft);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.dgtop .big{font-size:1.2rem;font-weight:800;color:var(--accent)}
+.dgtop ol{margin:4px 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:3px;font-size:.92rem}
+.dgsec{border:1px solid var(--line);border-radius:12px;padding:0 12px}
+.dgsec>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 0;font-weight:700}
+.dgsec>summary::-webkit-details-marker{display:none}
+.dgsec>summary .c{font-size:.84rem;color:var(--muted);font-weight:600;white-space:nowrap}
+.dgsec>summary::after{content:"▸";color:var(--muted);transition:transform .15s}
+.dgsec[open]>summary::after{transform:rotate(90deg)}
+.dgsec>summary>span:first-child{flex:1;min-width:0}
+.dgsec .dgb{padding:0 0 10px;display:flex;flex-direction:column}
+.dgsec .dgb>p{margin:0 0 8px;font-size:.88rem;color:var(--muted)}
+.dgrow{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:2px 12px;padding:7px 0;border-top:1px solid var(--line);font-size:.92rem}
+.dgrow .nm{flex:1 1 11rem;min-width:0;overflow-wrap:anywhere}
+.dgrow .v{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.dgrow .v.in{color:var(--in)}
+.dgrow .x{flex-basis:100%;color:var(--muted);font-size:.84rem}
+.dgrow select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.dgsim{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--soft);border-radius:10px;padding:10px 12px;margin-top:6px;font-size:.92rem}
+.nv{display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;padding:1px 8px;margin-left:6px;white-space:nowrap;vertical-align:1px}
+.nv.facil{background:var(--accent-soft);color:var(--accent)} .nv.medio{background:#fff1d6;color:#8a5a00}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .panel header{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 /* bars */
@@ -696,6 +719,11 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
         <div class="bars" id="rFut"></div>
       </div>
     </div>
+    <div class="panel" id="rDiag">
+      <header><h2>Onde dá para economizar</h2><button type="button" class="primary" id="dgRun">Rodar diagnóstico</button></header>
+      <p class="small muted" id="dgIntro" style="margin:0">Analisa os gastos do mês escolhido e mostra onde dá para gastar menos e quando as parcelas acabam. Moradia, saúde, educação, poupança e dívidas ficam protegidas: aparecem na conta, mas sem sugestão de corte.</p>
+      <div class="dgout" id="dgOut" hidden></div>
+    </div>
   </section>
 
   <!-- CARTOES -->
@@ -1135,7 +1163,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.20";
+const VERSAO="2.21";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1553,8 +1581,113 @@ function rResumo(){
   const fut=[]; for(let k=1;k<=3;k++){ const v=ITEMS.filter(i=>inM(i,m+k)&&isOut(i)).reduce((s,i)=>s+i.val,0); fut.push({k:"f"+k,label:fmtMLong(m+k),v}); }
   $("rFut").innerHTML=barsHTML(fut.filter(f=>f.v), 0, {empty:"Nada comprometido nos próximos meses."});
   rMetas(m, cur, ins, outs);
+  rDiag(m);
   if(dwKind && !$("drawer").hidden) dwAbrir(dwKind); // painel aberto acompanha mês e modo oculto
 }
+
+// ---------------- diagnóstico: onde dá para economizar ----------------
+// Moradia, saúde, educação (necessidades) e poupança/dívidas não recebem sugestão de corte.
+let diagOn=false; const diagAbertos=new Set(["top"]);
+let diagSim={}; try{ diagSim=JSON.parse(localStorage.getItem("lf-sim")||"{}")||{}; }catch(e){ diagSim={}; }
+const DG_PROTEG=/HABITA|SA[UÚ]DE|EDUCA/i;
+const DG_EVIT=/\b(JUROS?|MULTAS?|IOF|ANUIDADE|TARIFAS?|ENCARGOS?|MORA|ATRASO|ROTATIVO)\b/i;
+function dgNivel(cat,sub){ const g=grpOf(cat,sub||""); if(g==="pou") return "fixo"; if(g==="nec") return DG_PROTEG.test(cat)?"fixo":"medio"; return "facil"; }
+function dgEvit(i){ return i.val>0 && (DG_EVIT.test(i.desc) || /multa|tarifa|juro/i.test(i.sub||"")); }
+function diagCalc(m){
+  const out=x=>ITEMS.filter(i=>inM(i,x)&&isOut(i)), cur=out(m);
+  const sumBy=list=>{ const M=new Map(); list.forEach(i=>{ const k=i.cat+"||"+(i.sub||""); const o=M.get(k)||{k,cat:i.cat,sub:i.sub||"",v:0,n:0}; o.v+=i.val; o.n++; M.set(k,o); }); return M; };
+  const curM=sumBy(cur);
+  // 1. parcelas que acabam: o valor delas volta para o bolso no mês seguinte ao fim
+  const libM=new Map(); cur.filter(i=>(i.N||1)>1 || i.mEnd>i.m).forEach(i=>{ const x=i.mEnd+1; const o=libM.get(x)||{x,v:0,n:0,nomes:new Set()}; o.v+=i.val; o.n++; o.nomes.add(merchant(i.desc)); libM.set(x,o); });
+  const lib=[...libM.values()].sort((a,b)=>a.x-b.x); let acc=0; lib.forEach(o=>{ acc+=o.v; o.acc=acc; });
+  // 2. o que subiu em relação à média dos 3 meses anteriores (só meses com dados)
+  const prevMs=[m-1,m-2,m-3].filter(x=>ITEMS.some(i=>!i.ign&&isOut(i)&&i.m===x)), prevM=prevMs.map(x=>sumBy(out(x)));
+  const subiu=[]; if(prevMs.length) curM.forEach(o=>{ const avg=prevM.reduce((s,M)=>s+((M.get(o.k)||{}).v||0),0)/prevMs.length, d=o.v-avg; const nv=dgNivel(o.cat,o.sub); if(nv==="fixo" && avg<1) return; if(d>=50 && o.v>avg*1.2) subiu.push({...o,avg,d,nv}); });
+  subiu.sort((a,b)=>b.d-a.d);
+  // 3. desejos x meta
+  const C=calcMetas(m), limDes=C.base*(+C.P.des||0)/100;
+  const desSubs=[...curM.values()].filter(o=>grpOf(o.cat,o.sub)==="des"&&o.v>0).sort((a,b)=>b.v-a.v);
+  // 4. gastos pequenos (até R$ 100, 3 vezes ou mais no mês)
+  const peq=[...sumBy(cur.filter(i=>(i.N||1)<=1 && i.val>0 && i.val<=100 && dgNivel(i.cat,i.sub)!=="fixo")).values()].filter(o=>o.n>=3).sort((a,b)=>b.v-a.v);
+  // 5. assinaturas: mesma loja todo mês com valor parecido (ou subcategoria de assinatura)
+  const mer=new Map();
+  [m-3,m-2,m-1,m].forEach(x=>ITEMS.filter(i=>!i.ign&&isOut(i)&&i.m===x&&(i.N||1)<=1&&i.val>0).forEach(i=>{ if(dgNivel(i.cat,i.sub)==="fixo") return; const k=merchant(i.desc); const o=mer.get(k)||{k,cat:i.cat,sub:i.sub||"",ms:new Map()}; o.ms.set(x,(o.ms.get(x)||0)+i.val); if(x===m){ o.cat=i.cat; o.sub=i.sub||""; } mer.set(k,o); }));
+  const ass=[]; mer.forEach(o=>{ if(!o.ms.has(m)) return; const vs=[...o.ms.values()], v=o.ms.get(m), asSub=/assinatura|streaming|spotify/i.test(o.sub);
+    const fixo=o.ms.size>=3 && Math.max(...vs)<=Math.min(...vs)*1.15; if(fixo || (asSub && o.ms.size>=2)) ass.push({k:o.k,cat:o.cat,sub:o.sub,v,meses:o.ms.size}); });
+  ass.sort((a,b)=>b.v-a.v);
+  // 6. gastos evitáveis: juros, multas, tarifas, anuidade, IOF
+  const evit=cur.filter(dgEvit).sort((a,b)=>b.val-a.val); let evit6=0; for(let x=m-5;x<=m;x++) evit6+=out(x).filter(dgEvit).reduce((s,i)=>s+i.val,0);
+  // sugestões juntas por subcategoria (vale a maior economia de cada uma, para não contar duas vezes)
+  const sug=new Map(); const add=(o,v,why)=>{ const nv=dgNivel(o.cat,o.sub); if(nv==="fixo") return; if(nv==="medio") v=Math.min(v,o.v*0.5); if(v<1) return; const k=o.cat+"||"+(o.sub||""); const s=sug.get(k)||{k,cat:o.cat,sub:o.sub||"",v:0,why:"",nv}; if(v>s.v){ s.v=v; s.why=why; } sug.set(k,s); };
+  peq.forEach(o=>add(o,o.v/2,"cortar metade dos gastos pequenos"));
+  subiu.forEach(o=>add(o,o.d, o.avg<1? "gasto que não teve nos meses anteriores, evite repetir" : "voltar à média dos meses anteriores"));
+  const assSub=new Map(); ass.forEach(a=>{ const k=a.cat+"||"+a.sub; const o=assSub.get(k)||{cat:a.cat,sub:a.sub,v:0}; o.v+=a.v; assSub.set(k,o); }); assSub.forEach(o=>add(o,o.v,"cancelar as assinaturas que não usa"));
+  const evSub=sumBy(evit); evSub.forEach(o=>add(o,o.v,"evitar juros, multas e tarifas"));
+  const sugs=[...sug.values()].sort((a,b)=>(a.nv===b.nv?0:a.nv==="facil"?-1:1)||b.v-a.v);
+  // simulador: tudo que dá para cortar neste mês
+  const simList=[...curM.values()].filter(o=>o.v>=10 && dgNivel(o.cat,o.sub)!=="fixo").sort((a,b)=>b.v-a.v).slice(0,15);
+  const tot=cur.reduce((s,i)=>s+i.val,0), ins=cur.filter(i=>!isOut(i)).reduce((s,i)=>s+i.val,0);
+  return {m,lib,subiu,prevMs,C,limDes,desSubs,peq,ass,evit,evit6,sugs,simList,curM,tot,base:C.base};
+}
+function dgNome(o){ const s=o.sub||o.cat; return `${esc(s)}${o.sub&&o.sub!==o.cat?` <span class="small muted">· ${esc(o.cat.charAt(0)+o.cat.slice(1).toLowerCase())}</span>`:""}`; }
+function dgPill(nv){ return nv==="facil"?`<span class="nv facil">fácil</span>`:nv==="medio"?`<span class="nv medio">médio</span>`:""; }
+function rDiag(m){
+  const box=$("dgOut"); if(!box) return;
+  $("dgRun").textContent= diagOn? "Rodar de novo" : "Rodar diagnóstico";
+  box.hidden=!diagOn; if(!diagOn){ box.innerHTML=""; return; }
+  const D=diagCalc(m), B=v=>BRL.format(v), sec=(id,tit,cont,body)=>`<details class="dgsec" data-dg="${id}"${diagAbertos.has(id)?" open":""}><summary><span>${tit}</span><span class="c">${cont}</span></summary><div class="dgb">${body}</div></details>`;
+  const totSug=D.sugs.reduce((s,o)=>s+o.v,0), ultLib=D.lib.length? D.lib[D.lib.length-1] : null;
+  let h=`<div class="dgtop"><span class="small muted">Diagnóstico de ${fmtMLong(m)}</span>`;
+  h+= totSug>=1? `<span>Dá para sobrar até <span class="big">${B(totSug)} por mês</span> (${B(totSug*12)} no ano) com os cortes abaixo, do mais fácil para o mais difícil:</span><ol>${D.sugs.slice(0,6).map(o=>`<li>${dgNome(o)}: ${o.why}, <b>${B(o.v)}</b>${dgPill(o.nv)}</li>`).join("")}</ol>`
+    : `<span>Não achei cortes claros neste mês. Seus gastos estão parecidos com os meses anteriores.</span>`;
+  if(ultLib) h+=`<span>Sem cortar nada, quando as parcelas de agora acabarem (em ${fmtMLong(ultLib.x)}), sobram <b>${B(ultLib.acc)} a mais por mês</b>.</span>`;
+  h+=`</div>`;
+  // 1
+  h+=sec("lib","Quando a renda vai liberar", D.lib.length? `+${B(ultLib.acc)}/mês` : "sem parcelas",
+    D.lib.length? `<p>Parcelas que caem em ${fmtMLong(m)} e o mês em que o valor delas volta para você.</p>`+D.lib.map(o=>{ const nm=[...o.nomes]; return `<div class="dgrow"><span class="nm"><b>${fmtMLong(o.x)}</b>: ${o.n===1?"acaba 1 parcela":`acabam ${o.n} parcelas`}</span><span class="v in">+${B(o.v)}/mês</span><span class="x">${esc(nm.slice(0,4).join(", "))}${nm.length>4?` e mais ${nm.length-4}`:""} · livre no total a partir daí: ${B(o.acc)}/mês</span></div>`; }).join("")
+    : `<p>Nenhuma parcela neste mês.</p>`);
+  // 2
+  h+=sec("sub","O que subiu", D.subiu.length? `${D.subiu.length} ${D.subiu.length===1?"item":"itens"}` : "nada",
+    !D.prevMs.length? `<p>Ainda não há meses anteriores para comparar.</p>`
+    : (D.subiu.length? `<p>Comparado com a média de ${D.prevMs.length===1?"1 mês anterior":D.prevMs.length+" meses anteriores"}.</p>`+D.subiu.slice(0,10).map(o=>`<div class="dgrow"><span class="nm">${dgNome(o)}${dgPill(o.nv)}</span><span class="v">+${B(o.d)}</span><span class="x">${B(o.v)} neste mês · média ${B(o.avg)}${o.nv==="fixo"?" · necessidade, só para acompanhar":""}</span></div>`).join("")+(D.subiu.length>10?`<p>E mais ${D.subiu.length-10} com aumento menor.</p>`:"")
+      : `<p>Nenhum gasto subiu muito em relação à média.</p>`));
+  // 3
+  const dv=D.C.v.des, over=dv-D.limDes;
+  h+=sec("des",`Desejos x meta de ${+D.C.P.des||0}%`, D.base? (over>0.5? `${B(over)} acima` : "dentro da meta") : "sem renda",
+    !D.base? `<p>Sem entradas neste mês. Informe a renda em Ajustar metas para comparar.</p>`
+    : `<p>${B(dv)} em desejos, de ${B(D.limDes)} da meta. ${over>0.5?`Passou <b>${B(over)}</b>. Os que mais pesaram:`:"Está dentro da meta. Os maiores:"}</p>`+D.desSubs.slice(0,5).map(o=>`<div class="dgrow"><span class="nm">${dgNome(o)}</span><span class="v">${B(o.v)}</span></div>`).join(""));
+  // 4
+  h+=sec("peq","Gastos pequenos que somam muito", D.peq.length? `${D.peq.length} ${D.peq.length===1?"item":"itens"}` : "nada",
+    D.peq.length? `<p>Compras de até R$ 100 que se repetem 3 vezes ou mais no mês.</p>`+D.peq.map(o=>`<div class="dgrow"><span class="nm">${dgNome(o)}${dgPill(dgNivel(o.cat,o.sub))}</span><span class="v">${B(o.v)}</span><span class="x">${o.n} vezes · cortando metade, sobram ${B(o.v/2)} por mês</span></div>`).join("")
+    : `<p>Nenhum gasto pequeno repetido neste mês.</p>`);
+  // 5
+  const assTot=D.ass.reduce((s,o)=>s+o.v,0);
+  h+=sec("ass","Assinaturas e cobranças todo mês", D.ass.length? `${B(assTot)}/mês` : "nada",
+    D.ass.length? `<p>Cobranças que se repetem com valor parecido. Veja se ainda usa cada uma. No ano dá ${B(assTot*12)}.</p>`+D.ass.map(o=>`<div class="dgrow"><span class="nm">${esc(o.k)} <span class="small muted">· ${esc(o.sub||o.cat)}</span></span><span class="v">${B(o.v)}/mês</span><span class="x">${B(o.v*12)} no ano · apareceu em ${o.meses} dos últimos 4 meses</span></div>`).join("")
+    : `<p>Nenhuma cobrança repetida encontrada.</p>`);
+  // 6
+  const evTot=D.evit.reduce((s,i)=>s+i.val,0);
+  h+=sec("evi","Gastos evitáveis", evTot>0? B(evTot) : "nada",
+    `<p>Juros, multas, tarifas, anuidade e IOF. Nos últimos 6 meses: <b>${B(D.evit6)}</b>.</p>`+(D.evit.length? D.evit.map(i=>`<div class="dgrow"><span class="nm">${esc(i.desc)}</span><span class="v">${B(i.val)}</span></div>`).join("") : `<p>Nada assim neste mês. Ótimo!</p>`));
+  // 7
+  const simOpt=p=>[0,10,20,30,50,70,100].map(x=>`<option value="${x}"${x===p?" selected":""}>${x? "−"+x+"%" : "manter"}</option>`).join("");
+  h+=sec("sim","Simulador: e se eu cortar?", `<span id="dgSimC"></span>`,
+    D.simList.length? `<p>Escolha quanto cortar de cada gasto e veja quanto sobraria.</p>`+D.simList.map(o=>`<div class="dgrow"><span class="nm">${dgNome(o)}</span><span class="v">${B(o.v)}</span><select data-sim="${esc(o.k)}" aria-label="Quanto cortar de ${esc(o.sub||o.cat)}">${simOpt(+diagSim[o.k]||0)}</select></div>`).join("")
+      +`<div class="dgsim"><span id="dgSimTot"></span><span><button type="button" class="ghost" id="dgSimSug">Usar as sugestões</button><button type="button" class="ghost" id="dgSimZ">Zerar</button></span></div>`
+    : `<p>Nenhum gasto para simular neste mês.</p>`);
+  box.innerHTML=h;
+  box.querySelectorAll("details.dgsec").forEach(d=>d.addEventListener("toggle",()=>{ if(d.open) diagAbertos.add(d.dataset.dg); else diagAbertos.delete(d.dataset.dg); }));
+  const simTot=()=>{ let e=0; D.simList.forEach(o=>{ e+=o.v*(+diagSim[o.k]||0)/100; }); const bal=D.base-D.tot;
+    if($("dgSimTot")) $("dgSimTot").innerHTML= e>0? `Economia: <b>${B(e)} por mês</b> · ${B(e*12)} no ano · sobraria ${B(bal+e)} em ${fmtM(m)}` : "Escolha um corte para ver a economia.";
+    $("dgSimC").textContent= e>0? `−${B(e)}/mês` : "";
+    try{ localStorage.setItem("lf-sim",JSON.stringify(diagSim)); }catch(err){} };
+  box.querySelectorAll("[data-sim]").forEach(s=>s.onchange=()=>{ const v=+s.value; if(v) diagSim[s.dataset.sim]=v; else delete diagSim[s.dataset.sim]; simTot(); });
+  const setAll=f=>{ D.simList.forEach(o=>{ const v=f(o); if(v) diagSim[o.k]=v; else delete diagSim[o.k]; }); box.querySelectorAll("[data-sim]").forEach(s=>{ s.value=String(+diagSim[s.dataset.sim]||0); }); simTot(); };
+  if($("dgSimSug")) $("dgSimSug").onclick=()=>setAll(o=>{ const s=D.sugs.find(x=>x.k===o.k); if(!s) return 0; const p=s.v/o.v*100; return [10,20,30,50,70,100].find(x=>x>=p-5)||100; });
+  if($("dgSimZ")) $("dgSimZ").onclick=()=>setAll(()=>0);
+  simTot();
+}
+$("dgRun").onclick=()=>{ diagOn=true; rDiag(selMonth); const p=$("rDiag"); if(p&&p.scrollIntoView) p.scrollIntoView({behavior:"smooth",block:"start"}); };
 
 // ---------------- resumo: rosca, categorias com subcategorias, mês a mês ----------------
 const catsAbertas=new Set();

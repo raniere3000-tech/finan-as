@@ -65,6 +65,29 @@ main.wrap{display:flex;flex-direction:column;gap:18px;padding-block:6px 60px}
 .tile .sub{font-size:.82rem;color:var(--muted)}
 .in{color:var(--in)} .out{color:var(--out)}
 .grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+/* v2.21: diagnóstico "Onde dá para economizar" */
+.dgout{display:flex;flex-direction:column;gap:10px}
+.dgtop{background:var(--accent-soft);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.dgtop .big{font-size:1.2rem;font-weight:800;color:var(--accent)}
+.dgtop ol{margin:4px 0 0;padding-left:1.2rem;display:flex;flex-direction:column;gap:3px;font-size:.92rem}
+.dgsec{border:1px solid var(--line);border-radius:12px;padding:0 12px}
+.dgsec>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 0;font-weight:700}
+.dgsec>summary::-webkit-details-marker{display:none}
+.dgsec>summary .c{font-size:.84rem;color:var(--muted);font-weight:600;white-space:nowrap}
+.dgsec>summary::after{content:"▸";color:var(--muted);transition:transform .15s}
+.dgsec[open]>summary::after{transform:rotate(90deg)}
+.dgsec>summary>span:first-child{flex:1;min-width:0}
+.dgsec .dgb{padding:0 0 10px;display:flex;flex-direction:column}
+.dgsec .dgb>p{margin:0 0 8px;font-size:.88rem;color:var(--muted)}
+.dgrow{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:2px 12px;padding:7px 0;border-top:1px solid var(--line);font-size:.92rem}
+.dgrow .nm{flex:1 1 11rem;min-width:0;overflow-wrap:anywhere}
+.dgrow .v{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.dgrow .v.in{color:var(--in)}
+.dgrow .x{flex-basis:100%;color:var(--muted);font-size:.84rem}
+.dgrow select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.dgsim{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--soft);border-radius:10px;padding:10px 12px;margin-top:6px;font-size:.92rem}
+.nv{display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;padding:1px 8px;margin-left:6px;white-space:nowrap;vertical-align:1px}
+.nv.facil{background:var(--accent-soft);color:var(--accent)} .nv.medio{background:#fff1d6;color:#8a5a00}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .panel header{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 /* bars */
@@ -686,6 +709,11 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
         <header><h2>Já comprometido</h2><span class="small muted">parcelas e lançamentos futuros</span></header>
         <div class="bars" id="rFut"></div>
       </div>
+    </div>
+    <div class="panel" id="rDiag">
+      <header><h2>Onde dá para economizar</h2><button type="button" class="primary" id="dgRun">Rodar diagnóstico</button></header>
+      <p class="small muted" id="dgIntro" style="margin:0">Analisa os gastos do mês escolhido e mostra onde dá para gastar menos e quando as parcelas acabam. Moradia, saúde, educação, poupança e dívidas ficam protegidas: aparecem na conta, mas sem sugestão de corte.</p>
+      <div class="dgout" id="dgOut" hidden></div>
     </div>
   </section>
 
