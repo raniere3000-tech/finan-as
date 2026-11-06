@@ -47,6 +47,12 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     await page.evaluate(() => go("resumo"));
     ok(await page.evaluate(() => { const b = document.querySelector("#rCats [data-tog]"); const sub = b.parentElement.querySelector(".barrow.sub"); const antes = sub.offsetParent === null; b.click(); return antes && sub.offsetParent !== null; }), `${nome}: subcategorias começam fechadas e abrem ao tocar`);
     ok(await page.evaluate(() => /R\$/.test(document.getElementById("kCom").textContent)), `${nome}: card de orçamento comprometido`);
+    await page.click('.tile[data-dw="kOut"]'); await page.waitForTimeout(150);
+    ok(await page.evaluate(() => !document.getElementById("drawer").hidden && document.querySelectorAll("#dwBody details").length > 0 && document.getElementById("dwTot").textContent === document.getElementById("kOut").textContent), `${nome}: card Saídas abre o painel com as categorias`);
+    await page.click("#dwX"); await page.click('.tile[data-dw="kCom"]'); await page.waitForTimeout(150);
+    ok(await page.evaluate(() => document.getElementById("dwTot").textContent === document.getElementById("kCom").textContent && document.querySelectorAll("#dwBody details.mes").length > 0), `${nome}: orçamento comprometido mês a mês`);
+    await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+    ok(await page.evaluate(() => document.getElementById("drawer").hidden), `${nome}: painel fecha`);
     // cartão adicionado à mão + compra parcelada que entra nos meses seguintes
     await page.evaluate(() => go("cartoes")); await page.click("#cAddBox > summary"); await page.waitForTimeout(100);
     await page.selectOption("#caCard", "__novo");

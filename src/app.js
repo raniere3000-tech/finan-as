@@ -18,11 +18,11 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.6";
+const VERSAO="2.7";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
-let revMode=false, estMode=false, catTouched=false, tab="resumo", selMonth=null, selCards=null, selCat=null, editingId=null, lTipo="Saída";
+let dwKind=null, revMode=false, estMode=false, catTouched=false, tab="resumo", selMonth=null, selCards=null, selCat=null, editingId=null, lTipo="Saída";
 // subcategorias novas (pesquisa + as que você criar), mudanças de categoria e ocultas
 function defaultExtras(){ return {subs:[
   {nome:"Aluguel",cat:"HABITAÇÃO",grp:"nec",kw:["ALUGUEL"]},
@@ -405,6 +405,7 @@ function rResumo(){
   const fut=[]; for(let k=1;k<=3;k++){ const v=ITEMS.filter(i=>inM(i,m+k)&&isOut(i)).reduce((s,i)=>s+i.val,0); fut.push({k:"f"+k,label:fmtMLong(m+k),v}); }
   $("rFut").innerHTML=barsHTML(fut.filter(f=>f.v), 0, {empty:"Nada comprometido nos próximos meses."});
   rMetas(m, cur, ins, outs);
+  if(dwKind && !$("drawer").hidden) dwAbrir(dwKind); // painel aberto acompanha mês e modo oculto
 }
 
 // ---------------- resumo: rosca, categorias com subcategorias, mês a mês ----------------
@@ -1052,6 +1053,42 @@ document.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer?.fil
     if(saved){ try{ const p=await saved.queryPermission({mode:"readwrite"}); savedName=saved.name||""; if(p==="granted") await useDir(saved); else { updateCover(); $("bDir").textContent="Reconectar pasta"; setFolder("Pasta "+saved.name+" · clique para reconectar","info"); } }catch(e){} } }
   else if(inFrame) setFolder("Dados só neste navegador");
 })();
+// ---- painel lateral: detalhe dos cards do Resumo ----
+
+const ondeDe=i=>isCardItem(i)? cardName(i.cardKey) : (i.meio||"");
+const parcDe=(i,x)=> i.N>1? `parcela ${i.n+(x-i.m)}/${i.N}` : "";
+function dwItem(i,x){ const extra=[fmtD(i.date), ondeDe(i), parcDe(i,x)].filter(Boolean).join(" · ");
+  return `<div class="it"><span class="d">${esc(i.desc)}</span><span class="v">${BRL.format(i.val)}</span><span class="m">${esc(extra)}</span></div>`; }
+function dwCats(list, x, abrir){
+  const cats=group(list,i=>i.cat,null,i=>catColor(i.cat));
+  return cats.map(c=>{ const its=list.filter(i=>i.cat===c.k), subs=group(its,i=>i.sub||"",i=>i.sub||"(sem subcategoria)");
+    return `<details${abrir?" open":""}><summary><span class="nm"><span class="sw" style="background:${c.c}"></span>${esc(c.label)} <span class="q">${its.length}</span></span><span class="num">${BRL.format(c.v)}</span></summary>
+      ${subs.map(sb=>`<div class="sub"><span>${esc(sb.label)}</span><span class="num">${BRL.format(sb.v)}</span></div>${its.filter(i=>(i.sub||"")===sb.k).sort((a,b)=>b.val-a.val).map(i=>dwItem(i,x)).join("")}`).join("")}</details>`; }).join("")||`<div class="empty">Nada neste mês.</div>`;
+}
+function dwAbrir(kind){
+  dwKind=kind; const m=selMonth, cur=ITEMS.filter(i=>inM(i,m)), outs=cur.filter(isOut), ins=cur.filter(i=>!isOut(i));
+  const soma=l=>l.reduce((s,i)=>s+i.val,0); let T="", sub="", tot=0, body="";
+  if(kind==="kIn"){ T="Entradas"; tot=soma(ins); sub=`${fmtMLong(m)} · ${ins.length} lançamento(s)`; body=dwCats(ins,m,true); }
+  else if(kind==="kOut"){ T="Saídas"; tot=soma(outs); const ca=outs.filter(isCardItem), ou=outs.filter(i=>!isCardItem(i));
+    sub=`${fmtMLong(m)} · ${BRL.format(soma(ca))} em cartões · ${BRL.format(soma(ou))} em Pix e boletos`;
+    body=`<div class="dwsec">Por categoria e subcategoria</div>${dwCats(outs,m,false)}`; }
+  else if(kind==="kBal"){ T="Diferença"; tot=soma(ins)-soma(outs); sub=`${fmtMLong(m)} · entradas ${BRL.format(soma(ins))} − saídas ${BRL.format(soma(outs))}`;
+    body=`<div class="dwsec">Entradas · ${BRL.format(soma(ins))}</div>${dwCats(ins,m,false)}<div class="dwsec">Saídas · ${BRL.format(soma(outs))}</div>${dwCats(outs,m,false)}`; }
+  else if(kind==="kCom"){ T="Orçamento comprometido";
+    const fut=ITEMS.filter(i=>!i.ign && isOut(i) && i.mEnd>m), ult=fut.reduce((x,i)=>Math.max(x,i.mEnd),m), meses=[];
+    for(let x=m+1;x<=ult;x++){ const l=ITEMS.filter(i=>inM(i,x)&&isOut(i)); meses.push({x,l,v:soma(l)}); }
+    tot=meses.reduce((s,r)=>s+r.v,0); const max=Math.max(1,...meses.map(r=>r.v));
+    sub= meses.length? `o que já cai nos próximos meses, de ${fmtM(m+1)} até ${fmtM(ult)} (parcelas e lançamentos futuros)` : "nada comprometido nos próximos meses";
+    body=meses.map((r,ix)=>`<details class="mes"${ix===0?" open":""}><summary><span class="nm">${fmtMLong(r.x)} <span class="q">${r.l.length} item(ns)</span></span><span class="v">${BRL.format(r.v)}</span></summary><div class="mbar"><i style="width:${r.v/max*100}%"></i></div>
+      ${r.l.slice().sort((a,b)=>b.val-a.val).map(i=>dwItem(i,r.x).replace('<span class="m">',`<span class="m">${esc(i.sub||i.cat)} · `)).join("")}</details>`).join("")||`<div class="empty">Nada comprometido nos próximos meses.</div>`; }
+  $("dwT").textContent=T; $("dwSub").textContent=sub; $("dwTot").textContent=BRL.format(tot); $("dwTot").className="dwtot num "+(kind==="kIn"||(kind==="kBal"&&tot>=0)?"in":"out");
+  $("dwBody").innerHTML=body; $("drawer").hidden=false;
+}
+function dwFechar(){ dwKind=null; $("drawer").hidden=true; }
+document.querySelectorAll(".tile[data-dw]").forEach(t=>{ t.onclick=()=>dwAbrir(t.dataset.dw); t.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); dwAbrir(t.dataset.dw); } }; });
+$("dwX").onclick=dwFechar; $("dwBg").onclick=dwFechar;
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !$("drawer").hidden) dwFechar(); });
+
 // ---- PIN: tranca a tela ao abrir e depois de um tempo parado (fica só neste aparelho) ----
 const PIN_K="lf-pin", PIN_OK=!!(window.crypto&&crypto.subtle);
 function pinGet(){ try{ return JSON.parse(localStorage.getItem(PIN_K)||"null"); }catch(e){ return null; } }
