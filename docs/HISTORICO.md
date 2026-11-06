@@ -54,9 +54,9 @@ Em ordem de pedido:
 22. **Gráfico mês a mês (v2.0)** — vira "Entradas e gastos mês a mês": entradas em barra verde ao lado dos gastos, valores escritos em cima das barras (no celular só no mês escolhido quando não cabe), mês escolhido destacado, linha de média só com 2+ meses de fatura, e o detalhe ao tocar mostra a diferença.
 23. **Cartão à mão e compras parceladas (v2.1)** — para cartão cuja fatura não dá para ler (ex.: PDF do Itaú). Em Cartões, quadro "+ Lançar compra no cartão": escolhe o cartão ou cria um novo (nome, final, fecha, vence), data, descrição, valor (total ou de cada parcela), parcelas e, para compra antiga, "parcela atual" (cai na fatura do mês escolhido e conta só as que faltam). Vira um lançamento manual com `meio` = chave do cartão; aparece em Cartões (fatura do mês, parcelas, próxima fatura), no Resumo e no orçamento comprometido. Dados › Cartões ganhou "+ Adicionar cartão à mão".
 24. **Tab na aba + Lançar (v2.2)** — a linha nova não lança mais assim que tem descrição e valor: o Tab passa por todos os campos (data, tipo, categoria, pago com, parcelas) e ela vira lançamento ao sair da linha ou com Enter; depois o Tab segue para os lançamentos. Editar uma linha existente não perde mais o foco (redesenha ao sair da linha). Compra lançada com cartão continua visível em + Lançar no mês da compra (antes sumia porque contava no mês da fatura).
+25. **Aplicativo instalável (v2.3)** — no GitHub Pages (https://raniere3000-tech.github.io/finan-as/) o Chrome/Edge mostra "Instalar app" (botão no topo ou ícone na barra de endereço). `app/manifest.webmanifest`, ícones e `sw.js` (abre sem internet; página busca versão nova quando há conexão). A pasta conectada continua lembrada (IndexedDB) e o app pede para o navegador não apagar os dados (`storage.persist`).
 
 ## Ideias que ficaram em aberto
 
 - Mover "Ajustar metas" do Resumo para a aba Dados (sugerido, sem resposta).
 - Saber o que é a loja "Myhub" para fixar a categoria (perdeu urgência: as compras foram estornadas).
-- Ligar o GitHub Pages (Settings → Pages → main) — depende do dono do repositório.

@@ -15,7 +15,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.2";
+const VERSAO="2.3";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1048,4 +1048,16 @@ document.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer?.fil
   if(FS_OK){ const saved=await idbGet("dir");
     if(saved){ try{ const p=await saved.queryPermission({mode:"readwrite"}); savedName=saved.name||""; if(p==="granted") await useDir(saved); else { updateCover(); $("bDir").textContent="Reconectar pasta"; setFolder("Pasta "+saved.name+" · clique para reconectar","info"); } }catch(e){} } }
   else if(inFrame) setFolder("Dados só neste navegador");
+})();
+// ---- aplicativo instalável: guarda a página para abrir sem internet e oferece "Instalar app" ----
+(function(){
+  const web=/^https?:$/.test(location.protocol) && !inFrame;
+  if(web && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  // pede ao navegador para não apagar os dados guardados aqui
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+  let ev=null; const b=$("bInstall");
+  window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); ev=e; b.hidden=false; });
+  b.onclick=async()=>{ if(!ev) return; ev.prompt(); const r=await ev.userChoice.catch(()=>null); ev=null; b.hidden=true;
+    if(r&&r.outcome==="accepted") toast("Pronto! O Leitor de Faturas está instalado. Abra pelo ícone na área de trabalho ou no menu Iniciar."); };
+  window.addEventListener("appinstalled",()=>{ b.hidden=true; });
 })();

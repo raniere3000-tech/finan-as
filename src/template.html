@@ -1,4 +1,8 @@
 <title>Leitor de Faturas</title>
+<link rel="manifest" href="app/manifest.webmanifest">
+<meta name="theme-color" content="#17806b">
+<link rel="icon" href="app/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="app/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -496,6 +500,7 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
     <span id="folderPill" class="pill"><span class="dot"></span><span id="folderTxt">Sem pasta conectada</span></span>
     <button id="bDir" class="primary" type="button">Conectar pasta</button>
     <button id="bRescan" type="button" hidden>Ler pasta de novo</button>
+    <button id="bInstall" type="button" hidden title="Instala o leitor como aplicativo neste computador">Instalar app</button>
   </div>
 </div></div>
 <nav class="tabs" aria-label="Seções"><div class="wrap" role="tablist">

@@ -15,6 +15,8 @@ src/pdf-lines.js    Converte texto do PDF (pdf.js) em linhas CSV
 data/defaults.json  Categorias, subcategorias e palavras-chave genéricas (sem dados pessoais)
 build.py            Junta tudo em index.html
 index.html          Arquivo gerado (é o que o GitHub Pages publica) — não edite à mão
+app/                Ícones e manifest do aplicativo instalável (PWA)
+sw.js               Service worker: guarda a página e as bibliotecas para abrir sem internet
 tests/smoke.js      Teste de ponta a ponta com Playwright (pasta simulada + fixtures)
 tests/fixtures/     Faturas FALSAS de exemplo (Nubank e C6)
 ```
@@ -32,7 +34,7 @@ Versão pessoal (com as categorias e dados do dono): `python3 build.py --data pr
 ## Regras que não podem quebrar
 
 - **Nunca** colocar dados pessoais no repositório: faturas, nomes, finais de cartão reais, valores, o JSON de dados. O `.gitignore` bloqueia `*.csv`, `*.pdf`, `*.xlsx`, `leitor-faturas-dados.json` e `private/` (exceto `tests/fixtures/`).
-- Saída sempre **um HTML autocontido**. Bibliotecas só via CDN fixa: SheetJS `xlsx@0.18.5` e `pdf.js@3.11.174` (cdnjs), fontes do Google Fonts.
+- Saída sempre **um HTML autocontido** (os arquivos `app/` e `sw.js` só servem para instalar como aplicativo pelo GitHub Pages; sem eles o HTML funciona igual). Bibliotecas só via CDN fixa: SheetJS `xlsx@0.18.5` e `pdf.js@3.11.174` (cdnjs), fontes do Google Fonts.
 - Conectar pasta usa a File System Access API (`showDirectoryPicker`): só Chrome/Edge no computador e fora de iframe. Em celular/iframe o app cai para **Escolher arquivos** + `localStorage`.
 - Layout tem que funcionar em 390px sem rolagem lateral da página (tabelas largas rolam dentro de `.sheet`).
 
