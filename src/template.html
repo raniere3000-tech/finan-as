@@ -506,13 +506,12 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
   .top .wrap{display:grid;grid-template-columns:minmax(0,1fr);grid-auto-columns:auto;grid-auto-flow:column;column-gap:6px;row-gap:3px;align-items:center;padding-block:8px}
   .folder{display:contents}
   .brand{grid-column:1;grid-row:1;min-width:0}
+  .brand h1 .ver{display:inline-block!important;font-size:.66rem}
   .brand h1{font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .folder .pill{grid-column:1;grid-row:2;justify-self:start;max-width:100%;font-size:.72rem;padding:2px 9px}
   .folder button{grid-row:1/3;width:38px;height:38px;padding:0;justify-content:center;border-radius:11px}
   .folder button .bi{display:block}
   .folder button .bl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  #bDir.sem{width:auto;padding:0 12px}
-  #bDir.sem .bl{position:static;width:auto;height:auto;overflow:visible;clip:auto;font-size:.84rem}
   .monthbar{padding-block:8px 0}
   .mnav button{width:34px;height:34px}
   main.wrap,.view{gap:14px}
@@ -589,7 +588,7 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
 </div>
 <div class="bgfx" aria-hidden="true"><span class="g1"></span><span class="g2"></span><span class="g3"></span></div>
 <div class="top"><div class="wrap">
-  <div class="brand"><h1>Leitor de Faturas <span class="ver" data-ver>v1.2</span></h1><span>Cartões, Pix e boletos num lugar só</span></div>
+  <div class="brand"><h1>Finanças <span class="ver" data-ver>v1.2</span></h1><span>Cartões, Pix e boletos num lugar só</span></div>
   <div class="folder">
     <span id="folderPill" class="pill"><span class="dot"></span><span id="folderTxt">Sem pasta conectada</span></span>
     <button id="bDir" class="primary sem" type="button" title="Escolher a pasta das faturas"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="bl">Conectar pasta</span></button>

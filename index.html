@@ -512,13 +512,12 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
   .top .wrap{display:grid;grid-template-columns:minmax(0,1fr);grid-auto-columns:auto;grid-auto-flow:column;column-gap:6px;row-gap:3px;align-items:center;padding-block:8px}
   .folder{display:contents}
   .brand{grid-column:1;grid-row:1;min-width:0}
+  .brand h1 .ver{display:inline-block!important;font-size:.66rem}
   .brand h1{font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .folder .pill{grid-column:1;grid-row:2;justify-self:start;max-width:100%;font-size:.72rem;padding:2px 9px}
   .folder button{grid-row:1/3;width:38px;height:38px;padding:0;justify-content:center;border-radius:11px}
   .folder button .bi{display:block}
   .folder button .bl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  #bDir.sem{width:auto;padding:0 12px}
-  #bDir.sem .bl{position:static;width:auto;height:auto;overflow:visible;clip:auto;font-size:.84rem}
   .monthbar{padding-block:8px 0}
   .mnav button{width:34px;height:34px}
   main.wrap,.view{gap:14px}
@@ -598,7 +597,7 @@ tr.zerinfo td{background:var(--soft);text-align:center;padding:10px}
 </div>
 <div class="bgfx" aria-hidden="true"><span class="g1"></span><span class="g2"></span><span class="g3"></span></div>
 <div class="top"><div class="wrap">
-  <div class="brand"><h1>Leitor de Faturas <span class="ver" data-ver>v1.2</span></h1><span>Cartões, Pix e boletos num lugar só</span></div>
+  <div class="brand"><h1>Finanças <span class="ver" data-ver>v1.2</span></h1><span>Cartões, Pix e boletos num lugar só</span></div>
   <div class="folder">
     <span id="folderPill" class="pill"><span class="dot"></span><span id="folderTxt">Sem pasta conectada</span></span>
     <button id="bDir" class="primary sem" type="button" title="Escolher a pasta das faturas"><svg class="bi" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="bl">Conectar pasta</span></button>
@@ -1113,7 +1112,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.13";
+const VERSAO="2.14";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -2194,10 +2193,10 @@ function dwAbrir(kind){
 }
 function instalarAjuda(){
   dwKind=null; $("dwT").textContent="Instalar no celular"; $("dwSub").textContent="O leitor vira um ícone na tela inicial e abre como aplicativo"; $("dwTot").textContent=""; $("dwTot").className="dwtot";
-  $("dwBody").innerHTML=`<div class="dwsec">No Chrome (Android)</div><ol class="steps"><li>Toque nos <b>três pontinhos ⋮</b> no canto de cima.</li><li>Toque em <b>Instalar app</b> (em alguns celulares aparece <b>Adicionar à tela inicial</b>).</li><li>Confirme em <b>Instalar</b>. O ícone <b>Faturas</b> aparece na tela inicial.</li></ol>
+  $("dwBody").innerHTML=`<div class="dwsec">No Chrome (Android)</div><ol class="steps"><li>Toque nos <b>três pontinhos ⋮</b> no canto de cima.</li><li>Toque em <b>Instalar app</b> (em alguns celulares aparece <b>Adicionar à tela inicial</b>).</li><li>Confirme em <b>Instalar</b>. O ícone <b>Finanças</b> aparece na tela inicial.</li></ol>
   <div class="dwsec">No Samsung Internet</div><ol class="steps"><li>Toque no menu <b>≡</b> embaixo.</li><li>Toque em <b>Adicionar página a</b> › <b>Tela inicial</b>.</li></ol>
   <div class="dwsec">No iPhone (Safari)</div><ol class="steps"><li>Toque em <b>Compartilhar</b> (quadrado com seta).</li><li>Toque em <b>Adicionar à Tela de Início</b>.</li></ol>
-  <div class="dwsec">Não apareceu a opção?</div><ul class="steps"><li>Abra o endereço direto no navegador, não dentro do WhatsApp ou de outro app.</li><li>Recarregue a página uma vez e tente de novo.</li><li>Se já instalou antes, procure o ícone <b>Faturas</b> na lista de aplicativos.</li></ul>`;
+  <div class="dwsec">Não apareceu a opção?</div><ul class="steps"><li>Abra o endereço direto no navegador, não dentro do WhatsApp ou de outro app.</li><li>Recarregue a página uma vez e tente de novo.</li><li>Se já instalou antes, procure o ícone <b>Finanças</b> na lista de aplicativos.</li></ul>`;
   $("drawer").hidden=false;
 }
 function dwFechar(){ dwKind=null; $("drawer").hidden=true; }
@@ -2282,7 +2281,7 @@ document.body.classList.toggle("oculto",oculto); $("bEye").setAttribute("aria-pr
   if(web && celular && !instalado()) b.hidden=false;
   window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); ev=e; b.hidden=false; });
   b.onclick=async()=>{ if(!ev){ instalarAjuda(); return; } ev.prompt(); const r=await ev.userChoice.catch(()=>null); ev=null;
-    if(r&&r.outcome==="accepted"){ b.hidden=true; toast(celular?"Pronto! Procure o ícone Faturas na tela inicial do celular.":"Pronto! O Leitor de Faturas está instalado. Abra pelo ícone na área de trabalho ou no menu Iniciar."); } };
+    if(r&&r.outcome==="accepted"){ b.hidden=true; toast(celular?"Pronto! Procure o ícone Finanças na tela inicial do celular.":"Pronto! O Leitor de Faturas está instalado. Abra pelo ícone na área de trabalho ou no menu Iniciar."); } };
   window.addEventListener("appinstalled",()=>{ b.hidden=true; });
 })();
 

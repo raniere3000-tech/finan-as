@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.13";
+const VERSAO="2.14";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1099,10 +1099,10 @@ function dwAbrir(kind){
 }
 function instalarAjuda(){
   dwKind=null; $("dwT").textContent="Instalar no celular"; $("dwSub").textContent="O leitor vira um ícone na tela inicial e abre como aplicativo"; $("dwTot").textContent=""; $("dwTot").className="dwtot";
-  $("dwBody").innerHTML=`<div class="dwsec">No Chrome (Android)</div><ol class="steps"><li>Toque nos <b>três pontinhos ⋮</b> no canto de cima.</li><li>Toque em <b>Instalar app</b> (em alguns celulares aparece <b>Adicionar à tela inicial</b>).</li><li>Confirme em <b>Instalar</b>. O ícone <b>Faturas</b> aparece na tela inicial.</li></ol>
+  $("dwBody").innerHTML=`<div class="dwsec">No Chrome (Android)</div><ol class="steps"><li>Toque nos <b>três pontinhos ⋮</b> no canto de cima.</li><li>Toque em <b>Instalar app</b> (em alguns celulares aparece <b>Adicionar à tela inicial</b>).</li><li>Confirme em <b>Instalar</b>. O ícone <b>Finanças</b> aparece na tela inicial.</li></ol>
   <div class="dwsec">No Samsung Internet</div><ol class="steps"><li>Toque no menu <b>≡</b> embaixo.</li><li>Toque em <b>Adicionar página a</b> › <b>Tela inicial</b>.</li></ol>
   <div class="dwsec">No iPhone (Safari)</div><ol class="steps"><li>Toque em <b>Compartilhar</b> (quadrado com seta).</li><li>Toque em <b>Adicionar à Tela de Início</b>.</li></ol>
-  <div class="dwsec">Não apareceu a opção?</div><ul class="steps"><li>Abra o endereço direto no navegador, não dentro do WhatsApp ou de outro app.</li><li>Recarregue a página uma vez e tente de novo.</li><li>Se já instalou antes, procure o ícone <b>Faturas</b> na lista de aplicativos.</li></ul>`;
+  <div class="dwsec">Não apareceu a opção?</div><ul class="steps"><li>Abra o endereço direto no navegador, não dentro do WhatsApp ou de outro app.</li><li>Recarregue a página uma vez e tente de novo.</li><li>Se já instalou antes, procure o ícone <b>Finanças</b> na lista de aplicativos.</li></ul>`;
   $("drawer").hidden=false;
 }
 function dwFechar(){ dwKind=null; $("drawer").hidden=true; }
@@ -1187,6 +1187,6 @@ document.body.classList.toggle("oculto",oculto); $("bEye").setAttribute("aria-pr
   if(web && celular && !instalado()) b.hidden=false;
   window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); ev=e; b.hidden=false; });
   b.onclick=async()=>{ if(!ev){ instalarAjuda(); return; } ev.prompt(); const r=await ev.userChoice.catch(()=>null); ev=null;
-    if(r&&r.outcome==="accepted"){ b.hidden=true; toast(celular?"Pronto! Procure o ícone Faturas na tela inicial do celular.":"Pronto! O Leitor de Faturas está instalado. Abra pelo ícone na área de trabalho ou no menu Iniciar."); } };
+    if(r&&r.outcome==="accepted"){ b.hidden=true; toast(celular?"Pronto! Procure o ícone Finanças na tela inicial do celular.":"Pronto! O Leitor de Faturas está instalado. Abra pelo ícone na área de trabalho ou no menu Iniciar."); } };
   window.addEventListener("appinstalled",()=>{ b.hidden=true; });
 })();
