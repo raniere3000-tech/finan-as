@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.10";
+const VERSAO="2.11";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -440,29 +440,37 @@ function mesesChart(sel){
   if(!allMs.length){ box.innerHTML=`<div class="empty">Sem dados.</div>`; $("rMesesLeg").innerHTML=""; $("rMesesNote").textContent=""; return; }
   const last=realMs.length? Math.max(...realMs) : sel;          // último mês com fatura real
   const lastAll=Math.max(...allMs, last);                       // até a última parcela conhecida
-  const first=Math.max(Math.min(...allMs), last-11);
-  const ms=[]; for(let x=first;x<=lastAll;x++) ms.push(x);
+  const estreito=(box.clientWidth||760)<520;
+  let first=Math.max(Math.min(...allMs), last-11), fim=lastAll;
+  // no celular mostra uma janela de 7 meses em volta do mês escolhido (antes 16 barras ficavam espremidas)
+  if(estreito){ const ini=Math.max(first, Math.min(sel-3, fim-6)); first=Math.max(Math.min(...allMs), ini); fim=Math.min(fim, first+6); }
+  const ms=[]; for(let x=first;x<=fim;x++) ms.push(x);
   const outs=ms.map(x=>ITEMS.filter(i=>inM(i,x)&&isOut(i)).reduce((s,i)=>s+i.val,0));
   const ins=ms.map(x=>ITEMS.filter(i=>inM(i,x)&&!isOut(i)).reduce((s,i)=>s+i.val,0));
   const past=ms.map((x,k)=>({x,v:outs[k]})).filter(o=>o.x<=last && o.v>0);
   const avg=past.length>=2? past.reduce((s,o)=>s+o.v,0)/past.length : 0;   // média só faz sentido com 2+ meses
   const hasIns=ins.some(v=>v>0);
-  $("rMesesNote").textContent= lastAll>last? `de ${fmtM(first)} a ${fmtM(lastAll)} · depois de ${fmtM(last)} só o que já está comprometido` : `de ${fmtM(first)} a ${fmtM(last)}`;
-  $("rMesesLeg").innerHTML=`${hasIns?'<span><i style="background:#2f8f57"></i>Entradas</span>':""}<span><i style="background:#b54728"></i>Gastos</span>${lastAll>last?'<span><i style="background:#e9b8a6"></i>Já comprometido (parcelas)</span>':""}${avg>0?`<span><i class="dash"></i>Média de gastos ${BRL.format(avg)}</span>`:""}`;
-  const W=Math.max(300, box.clientWidth||760), H=W<520?230:280, pl=W<520?54:60, pr=10, pt=22, pb=30;
+  $("rMesesNote").textContent= (fim>last? `de ${fmtM(first)} a ${fmtM(fim)} · depois de ${fmtM(last)} só o que já está comprometido` : `de ${fmtM(first)} a ${fmtM(fim)}`)+(estreito?" · toque numa barra para ver os valores":"");
+  $("rMesesLeg").innerHTML=`${hasIns?'<span><i style="background:#2f8f57"></i>Entradas</span>':""}<span><i style="background:#b54728"></i>Gastos</span>${fim>last?'<span><i style="background:#e9b8a6"></i>Já comprometido (parcelas)</span>':""}${avg>0?`<span><i class="dash"></i>Média de gastos ${BRL.format(avg)}</span>`:""}`;
+  const W=Math.max(300, box.clientWidth||760), H=W<520?240:280, pl=W<520?54:60, pr=10, pt=W<520?34:22, pb=30;
   const max=Math.max(...outs, ...ins, avg, 1), nice=niceMax(max*1.08), ih=H-pt-pb, bw=(W-pl-pr)/ms.length;
   const y=v=>pt+ih*(1-v/nice), fs=W<520?10:11, short=v=>v>=1000? (v/1000).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mil" : Math.round(v).toLocaleString("pt-BR");
   let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Entradas e gastos por mês">`;
   const kSel=ms.indexOf(sel); if(kSel>=0) s+=`<rect x="${pl+kSel*bw+2}" y="${pt-16}" width="${bw-4}" height="${ih+16}" rx="8" fill="#f1f5f3"/>`;
   [0,nice/2,nice].forEach(t=>{ s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="#e8eeeb"/><text x="${pl-6}" y="${y(t)+4}" text-anchor="end" font-size="${fs}" fill="#62716b" font-family="JetBrains Mono, monospace">${short(t)}</text>`; });
-  const step=Math.ceil(ms.length/(W<520?6:12)), nb=hasIns?2:1, w=Math.max(4,Math.min(hasIns?26:36,bw*0.72/nb)), gap=hasIns?3:0, lbl=bw>=(hasIns?54:30);
+  const step=estreito?1:Math.ceil(ms.length/12), nb=hasIns?2:1, w=Math.max(4,Math.min(hasIns?26:36,bw*0.72/nb)), gap=hasIns?3:0, lbl=!estreito && bw>=(hasIns?54:30);
   const bar=(X,v,fill,stroke)=>{ const h=ih*v/nice, rr=Math.min(4,w/2,h); return h>0? `<path d="M${X},${y(0)}V${y(v)+rr}Q${X},${y(v)} ${X+rr},${y(v)}H${X+w-rr}Q${X+w},${y(v)} ${X+w},${y(v)+rr}V${y(0)}Z" fill="${fill}"${stroke?` stroke="${stroke}" stroke-width="1.5"`:""}/>` : ""; };
-  const val=(X,v,col,bold)=>`<text x="${X+w/2}" y="${y(v)-5}" text-anchor="middle" font-size="${fs-1}" fill="${col}" font-weight="${bold?700:500}" font-family="JetBrains Mono, monospace" stroke="#fff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">${short(v)}</text>`;
+  const val=(X,v,col,bold,up)=>`<text x="${X+w/2}" y="${y(v)-5-(up||0)}" text-anchor="middle" font-size="${fs-1}" fill="${col}" font-weight="${bold?700:500}" font-family="JetBrains Mono, monospace" stroke="#fff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">${short(v)}</text>`;
   ms.forEach((x,k)=>{ const fut=x>last, cx=pl+k*bw+bw/2, X0=cx-(nb*w+(nb-1)*gap)/2;
     let X=X0;
-    if(hasIns){ if(ins[k]>0){ s+=bar(X,ins[k],"#2f8f57"); if(lbl||x===sel) s+=val(X,ins[k],"#1f6b3f",x===sel); } X+=w+gap; }
-    if(outs[k]>0){ s+=bar(X,outs[k],fut?"#e9b8a6":"#b54728"); if(lbl||x===sel) s+=val(X,outs[k],fut?"#a5634c":"#8f3a20",x===sel); }
-    if(k%step===0||x===sel) s+=`<text x="${cx}" y="${H-pb+16}" text-anchor="middle" font-size="${fs}" fill="${x===sel?"#1f2a27":"#62716b"}" font-weight="${x===sel?700:400}">${fmtM(x)}</text>`; });
+    // dois valores muito próximos na altura: o menor sobe uma linha para não encavalar
+    const perto=hasIns&&ins[k]>0&&outs[k]>0&&(estreito||Math.abs(y(ins[k])-y(outs[k]))<13);
+    const topo=Math.min(y(ins[k]||0),y(outs[k]||0));
+    if(hasIns){ if(ins[k]>0){ s+=bar(X,ins[k],"#2f8f57"); if(lbl||x===sel) s+=val(X,ins[k],"#1f6b3f",x===sel, perto? y(ins[k])-topo+(ins[k]<outs[k]?0:13) : 0); } X+=w+gap; }
+    if(outs[k]>0){ s+=bar(X,outs[k],fut?"#e9b8a6":"#b54728"); if(lbl||x===sel) s+=val(X,outs[k],fut?"#a5634c":"#8f3a20",x===sel, perto? y(outs[k])-topo+(ins[k]<outs[k]?13:0) : 0); }
+    const perSel=kSel>=0&&k!==kSel&&Math.abs(k-kSel)<step;
+    const rot=estreito? (x===first||fmtM(x).startsWith("jan")? fmtM(x) : fmtM(x).split("/")[0]) : fmtM(x);
+    if((k%step===0&&!perSel)||x===sel) s+=`<text x="${cx}" y="${H-pb+16}" text-anchor="middle" font-size="${fs}" fill="${x===sel?"#1f2a27":"#62716b"}" font-weight="${x===sel?700:400}">${rot}</text>`; });
   if(avg>0) s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(avg)}" y2="${y(avg)}" stroke="#1f2a27" stroke-width="1.2" stroke-dasharray="5 4" opacity=".7"/><text x="${W-pr}" y="${y(avg)-4}" text-anchor="end" font-size="${fs-1}" fill="#1f2a27">média</text>`;
   ms.forEach((x,k)=>{ s+=`<rect class="hit" data-k="${k}" x="${pl+k*bw}" y="${pt}" width="${bw}" height="${ih}"/>`; });
   box.innerHTML=s+`</svg><div class="mtip" hidden></div>`;
