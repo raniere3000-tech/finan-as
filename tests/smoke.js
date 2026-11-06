@@ -36,6 +36,8 @@ try { local["pdf.min.js"] = require.resolve("pdfjs-dist/build/pdf.min.js"); loca
     ok(r.compras === 8 && r.pagamentos === 2, `${nome}: 8 compras e 2 pagamentos ignorados (${r.compras}/${r.pagamentos})`);
     const nucleo = await page.evaluate(() => ({ pix: parseParc("", "Pix no Crédito - Fulano - 11/12").N, venc: fileVenc("Fatura_2026-10-10.csv") ? fmtM(monthIndex(fileVenc("Fatura_2026-10-10.csv"))) : "", nubank: ITEMS.filter(i => i.file === "Nubank_2026-10-18.csv").every(i => fmtM(i.m) === "out/26") }));
     ok(nucleo.pix === 12 && nucleo.venc === "out/26" && nucleo.nubank, `${nome}: parcela "- 11/12" e mês pelo vencimento do nome do arquivo (${JSON.stringify(nucleo)})`);
+    ok(await page.evaluate(() => { const mk = (n, val, file, m) => ({ desc: "KaBuM! - NuPay - Parcela " + n + "/10", n, N: 10, val, parcData: "N", cardKey: "Nubank|", date: new Date(2026, 8 + n - 9, 11), mFat: m, file });
+      const its = computeMonths([mk(9, 151.71, "a", 24321), mk(10, 151.70, "b", 24322)], {}); return its[0].mEnd === 24321 && its[1].mEnd === 24322; }), `${nome}: parcela 9/10 não conta de novo quando a 10/10 (centavos diferentes) está em outra fatura`);
     ok(r.estornos === 2, `${nome}: compra estornada e o estorno ficaram zerados (${r.estornos})`);
     ok(r.uber === "Uber / 99", `${nome}: categorizou Uber como "Uber / 99" (${r.uber})`);
     ok(r.json, `${nome}: gravou leitor-faturas-dados.json na pasta`);

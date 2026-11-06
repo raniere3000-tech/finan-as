@@ -977,9 +977,14 @@ function computeMonths(items, cardCfg){
     // fatura com vencimento conhecido (data no nome do arquivo): tudo dela conta no mês do vencimento
     it.m= it.mFat!=null? it.mFat : monthIndex(it.date)+(it.parcData==="S"? it.n-1 : 0)+(f && it.date.getDate()>=f ? 1:0)+(f && v && v<f ? 1:0); it.mEnd=it.m;
   }
-  const key=it=> it.cardKey+"|"+(it.parcData==="S"? +it.date+"|"+it.desc : it.desc.replace(/\s*-?\s*parcela.*$/i,""))+"|"+it.N+"|"+it.val;
-  const byKey={}; for(const it of items){ if(it.N>1 && !it.ign){ (byKey[key(it)]=byKey[key(it)]||[]).push(it); } }
-  for(const it of items){ if(it.ign||it.N<=it.n) continue; if(!(byKey[key(it)]||[]).some(o=>o.n>it.n)) it.mEnd=it.m+(it.N-it.n); }
+  // mesma compra parcelada em outra fatura: mesma loja (sem o "Parcela n/N"), mesmo N, mesmo banco e valor quase igual
+  // (a última parcela costuma ter centavos de diferença, ex.: 151,71 e 151,70; o final do cartão pode faltar num dos arquivos)
+  const base=it=> (it.parcData==="S"? +it.date+"|" : "")+String(it.desc).replace(/\s*-?\s*parcela\s*\d+\s*(\/|de)\s*\d+.*$/i,"").replace(/\s*-\s*\d{1,2}\s*\/\s*\d{1,2}\s*$/,"").trim().toLowerCase()+"|"+it.N;
+  const mesmoCartao=(a,b)=>{ if(a.cardKey===b.cardKey) return true; const [ba,fa]=String(a.cardKey).split("|"), [bb,fb]=String(b.cardKey).split("|"); const la=(cardCfg[a.cardKey]||{}).alias, lb=(cardCfg[b.cardKey]||{}).alias; return ba===bb && (!fa||!fb||(!!la&&la===lb)); };
+  const byKey={}; for(const it of items){ if(it.N>1 && !it.ign){ (byKey[base(it)]=byKey[base(it)]||[]).push(it); } }
+  for(const it of items){ if(it.ign||it.N<=it.n) continue;
+    const tem=(byKey[base(it)]||[]).some(o=>o!==it && o.n>it.n && mesmoCartao(o,it) && Math.abs(o.val-it.val)<=Math.max(1,Math.abs(it.val)*0.02));
+    if(!tem) it.mEnd=it.m+(it.N-it.n); }
   return items;
 }
 function merchant(desc){

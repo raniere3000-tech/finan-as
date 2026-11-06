@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.11";
+const VERSAO="2.12";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -282,9 +282,10 @@ function monthsAll(){ const s=new Set(); ITEMS.forEach(i=>{ if(i.ign) return; fo
 // ---------------- render ----------------
 let bannerT=0;
 function showBanner(html, cls){ const b=$("banner"); b.innerHTML=`<span>${html}</span><button type="button" class="ghost" id="bClose">Fechar</button>`; b.className="banner"+(cls?" "+cls:""); b.hidden=false; $("bClose").onclick=()=>b.hidden=true; clearTimeout(bannerT); if(cls==="ok") bannerT=setTimeout(()=>{ b.hidden=true; },8000); }
-function go(t){ if(t==="pasta") t="dados"; tab=t; if(location.hash!=="#"+t){ try{ history.replaceState(null,"","#"+t); }catch(e){ location.hash=t; } } render(); }
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ go(b.dataset.tab); if(b.dataset.tab==="lancamentos") setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },60); });
-window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1); if(["resumo","cartoes","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
+// troca de aba pelo usuário entra no histórico: o botão voltar do celular volta para a aba anterior em vez de sair
+function go(t, push){ if(t==="pasta") t="dados"; tab=t; if(location.hash!=="#"+t){ try{ history[push?"pushState":"replaceState"](null,"","#"+t); }catch(e){ location.hash=t; } } render(); }
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ if(b.dataset.tab!==tab) go(b.dataset.tab,true); if(b.dataset.tab==="lancamentos") setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },60); });
+window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1)||"resumo"; if(!$("drawer").hidden) dwFechar(); if(["resumo","cartoes","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
 $("mPrev").onclick=()=>{ selMonth--; render(); };
 $("mNext").onclick=()=>{ selMonth++; render(); };
 
