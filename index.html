@@ -90,6 +90,24 @@ main.wrap{display:flex;flex-direction:column;gap:18px;padding-block:6px 60px}
 .ivrow .vv small{font-size:.74rem;color:var(--muted);text-align:right}
 .ivrow .vv small.in{color:var(--in)} .ivrow .vv small.out{color:var(--out)}
 .ivrow .x{padding:6px 9px;color:var(--muted)}
+.ivmetas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.ivmeta{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ivmeta h3{margin:0;font-size:1rem;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ivmeta h3 .pc{font-family:var(--f-num);font-size:.9rem;color:#6a4fc0;white-space:nowrap}
+.ivmeta .big{font-family:var(--f-num);font-weight:700;font-size:1.1rem}
+.ivmeta .pbar{height:10px;border-radius:10px;background:var(--soft);overflow:hidden}
+.ivmeta .pbar i{display:block;height:100%;background:#6a4fc0;border-radius:10px}
+.ivmeta .pbar i.ok{background:var(--in)}
+.ivmeta .f{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ivmeta .f label{display:flex;flex-direction:column;gap:3px;font-size:.74rem;font-weight:700;color:var(--muted);min-width:0}
+.ivmeta .f input{font:inherit;font-size:.92rem;font-weight:400;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--surface);min-width:0;width:100%}
+.ivmeta .f input[data-f="alvo"]{font-family:var(--f-num);text-align:right}
+.ivmeta p{margin:0;font-size:.86rem;color:var(--muted)}
+.ivmeta p b{color:var(--ink)}
+.ivmeta .inv{font-size:.82rem;color:var(--muted)}
+.ivrow .nm select{font:inherit;font-size:.8rem;border:1px solid transparent;border-radius:8px;background:none;color:var(--muted);padding:2px 4px;max-width:100%}
+.ivrow .nm select:focus{border-color:var(--line)}
+body.oculto .ivmeta input[data-f="alvo"]{filter:blur(6px)} body.oculto .ivmeta input[data-f="alvo"]:focus{filter:none}
 .ivbtn{justify-content:flex-end}
 @media (max-width:760px){.ivtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:520px){.ivrow{grid-template-columns:minmax(0,1fr) 7.6rem auto}#ivAdd .form{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -683,6 +701,7 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
   <button class="tab" role="tab" data-tab="resumo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 13h4v7H4zM10 8h4v12h-4zM16 4h4v16h-4z"/></svg><span class="tl">Resumo</span></button>
   <button class="tab" role="tab" data-tab="cartoes" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg><span class="tl">Cartões</span></button>
   <button class="tab add" aria-label="Adicionar lançamento" role="tab" data-tab="lancamentos" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-width="2.6" stroke-linecap="round"/></svg><span class="tl">Lançar</span></button>
+  <button class="tab" role="tab" data-tab="invest" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg><span class="tl">Investir</span></button>
   <button class="tab" role="tab" data-tab="analise" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span class="tl">Análise</span></button>
   <button class="tab" role="tab" data-tab="dados" type="button"><span class="ticon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="tbadge" id="tBadge" hidden></span></span><span class="tl">Dados</span></button>
 </div></nav>
@@ -742,25 +761,6 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
         <div class="bars" id="rFut"></div>
       </div>
     </div>
-    <div class="panel" id="rInv">
-      <header><h2>Meus investimentos</h2><span class="small muted" id="ivNote"></span></header>
-      <div class="ivtiles" id="ivTiles"></div>
-      <div class="ivevo" id="ivEvo"></div>
-      <div class="bars" id="ivTipos"></div>
-      <div class="ivlist" id="ivList"></div>
-      <details class="addbox" id="ivAddBox">
-        <summary><span class="h2">+ Adicionar investimento</span><span class="small muted">Ex.: CDB do banco, Tesouro Selic, ações, previdência</span></summary>
-        <form id="ivAdd" autocomplete="off">
-          <div class="form">
-            <label class="wide">Nome<input id="ivNome" type="text" placeholder="Ex.: Tesouro Selic 2029" required></label>
-            <label>Tipo<select id="ivTipo"></select></label>
-            <label>Onde está<input id="ivInst" type="text" placeholder="Ex.: Nubank"></label>
-            <label>Valor hoje (R$)<input id="ivVal" type="text" inputmode="decimal" placeholder="0,00"></label>
-            <label class="ivbtn"><span>&nbsp;</span><button type="submit" class="primary">Adicionar</button></label>
-          </div>
-        </form>
-      </details>
-    </div>
     <div class="panel" id="rDiag">
       <header><h2>Onde dá para economizar</h2><button type="button" class="primary" id="dgRun">Rodar diagnóstico</button></header>
       <p class="small muted" id="dgIntro" style="margin:0">Analisa os gastos do mês escolhido e mostra onde dá para gastar menos e quando as parcelas acabam. Moradia, saúde, educação, poupança e dívidas ficam protegidas: aparecem na conta, mas sem sugestão de corte.</p>
@@ -818,6 +818,37 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
   </section>
 
   <!-- ANALISE -->
+  <!-- INVESTIMENTOS -->
+  <section class="view" id="v-invest" hidden>
+    <div class="panel" id="rInv">
+      <header><h2>Meus investimentos</h2><span class="small muted" id="ivNote"></span></header>
+      <div class="ivtiles" id="ivTiles"></div>
+      <div class="ivevo" id="ivEvo"></div>
+      <div class="bars" id="ivTipos"></div>
+    </div>
+    <div class="panel" id="ivMetasP">
+      <header><h2>Metas</h2><span class="small muted">Ligue cada investimento a uma meta e acompanhe quanto falta</span></header>
+      <div class="ivmetas" id="ivMetas"></div>
+    </div>
+    <div class="panel">
+      <header><h2>Investimentos</h2><span class="small muted" id="ivListNote">toque no valor para atualizar o mês</span></header>
+      <div class="ivlist" id="ivList"></div>
+      <details class="addbox" id="ivAddBox">
+        <summary><span class="h2">+ Adicionar investimento</span><span class="small muted">Ex.: CDB do banco, Tesouro Selic, ações, previdência</span></summary>
+        <form id="ivAdd" autocomplete="off">
+          <div class="form">
+            <label class="wide">Nome<input id="ivNome" type="text" placeholder="Ex.: Tesouro Selic 2029" required></label>
+            <label>Tipo<select id="ivTipo"></select></label>
+            <label>Onde está<input id="ivInst" type="text" placeholder="Ex.: Nubank"></label>
+            <label class="wide">Meta<select id="ivMeta"></select></label>
+            <label>Valor hoje (R$)<input id="ivVal" type="text" inputmode="decimal" placeholder="0,00"></label>
+            <label class="ivbtn"><span>&nbsp;</span><button type="submit" class="primary">Adicionar</button></label>
+          </div>
+        </form>
+      </details>
+    </div>
+  </section>
+
   <section class="view" id="v-analise" hidden>
     <div class="panel">
       <header><h2>Escolha a categoria</h2><span class="small muted">Veja em que subcategoria e em que lugar você mais gastou</span></header>
@@ -1205,7 +1236,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.22";
+const VERSAO="2.23";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -1500,7 +1531,7 @@ function showBanner(html, cls){ const b=$("banner"); b.innerHTML=`<span>${html}<
 // troca de aba pelo usuário entra no histórico: o botão voltar do celular volta para a aba anterior em vez de sair
 function go(t, push){ if(t==="pasta") t="dados"; tab=t; if(location.hash!=="#"+t){ try{ history[push?"pushState":"replaceState"](null,"","#"+t); }catch(e){ location.hash=t; } } render(); }
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ if(b.dataset.tab!==tab) go(b.dataset.tab,true); if(b.dataset.tab==="lancamentos") setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },60); });
-window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1)||"resumo"; if(!$("drawer").hidden) dwFechar(); if(["resumo","cartoes","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
+window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1)||"resumo"; if(!$("drawer").hidden) dwFechar(); if(["resumo","cartoes","invest","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
 $("mPrev").onclick=()=>{ selMonth--; render(); };
 $("mNext").onclick=()=>{ selMonth++; render(); };
 
@@ -1567,7 +1598,7 @@ function render(){
   $("mCur").textContent=fmtMLong(selMonth);
   $("monthbar").hidden = tab==="pasta"||tab==="dados";
   if(state.seed && !$("banner").dataset.seen){ $("banner").dataset.seen="1"; showBanner("Mostrando os dados de exemplo. Clique em <b>Conectar pasta</b> para usar as suas faturas.","info"); }
-  ({resumo:rResumo,cartoes:rCartoes,analise:rAnalise,lancamentos:rLanc,pasta:rPasta,dados:()=>{ rDados(); rPasta(); }})[tab]();
+  ({resumo:rResumo,cartoes:rCartoes,invest:()=>rInv(selMonth),analise:rAnalise,lancamentos:rLanc,pasta:rPasta,dados:()=>{ rDados(); rPasta(); }})[tab]();
   alerts(); estAviso();
   updateCover();
 }
@@ -1591,7 +1622,7 @@ $("cvSkip").onclick=closeCover;
 $("cvDir").onclick=()=>{ $("bDir").click(); };
 $("cvConn").onclick=()=>{ if(!FS_OK){ $("fFiles").click(); return; } $("bDir").click(); };
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("cover").hidden) closeCover(); });
-function applyTabs(){ document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tab)); ["resumo","cartoes","analise","lancamentos","pasta","dados"].forEach(t=>$("v-"+t).hidden= !(t===tab || (t==="pasta"&&tab==="dados"))); }
+function applyTabs(){ document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tab)); ["resumo","cartoes","invest","analise","lancamentos","pasta","dados"].forEach(t=>$("v-"+t).hidden= !(t===tab || (t==="pasta"&&tab==="dados"))); }
 
 function rResumo(){
   const m=selMonth, cur=ITEMS.filter(i=>inM(i,m));
@@ -1623,12 +1654,40 @@ function rResumo(){
   const fut=[]; for(let k=1;k<=3;k++){ const v=ITEMS.filter(i=>inM(i,m+k)&&isOut(i)).reduce((s,i)=>s+i.val,0); fut.push({k:"f"+k,label:fmtMLong(m+k),v}); }
   $("rFut").innerHTML=barsHTML(fut.filter(f=>f.v), 0, {empty:"Nada comprometido nos próximos meses."});
   rMetas(m, cur, ins, outs);
-  rInv(m);
   rDiag(m);
   if(dwKind && !$("drawer").hidden) dwAbrir(dwKind); // painel aberto acompanha mês e modo oculto
 }
 
 // ---------------- meus investimentos (digitados à mão) ----------------
+// metas dos investimentos = subcategorias do grupo poupança (fora dívidas). state.alvos = {sub:{alvo, prazo:"AAAA-MM"}}
+function ivMetaList(){ const desp=new Set(cfg.cats.filter(c=>c.tipo==="Despesa").map(c=>c.nome));
+  return cfg.subs.filter(s=>desp.has(s[1]) && !/D[IÍ]VIDA/i.test(s[1]) && grpOf(s[1],s[0])==="pou").map(s=>s[0]); }
+function alvos(){ if(!state.alvos||typeof state.alvos!=="object") state.alvos={}; return state.alvos; }
+function ivMetaOpts(sel){ return `<option value="">Sem meta</option>`+ivMetaList().map(n=>`<option${n===sel?" selected":""}>${esc(n)}</option>`).join("")+(sel&&!ivMetaList().includes(sel)?`<option selected>${esc(sel)}</option>`:""); }
+function rIvMetas(m){
+  const box=$("ivMetas"); if(!box) return; const L=invs(), A=alvos(), metas=ivMetaList();
+  const ym=x=>Math.floor(x/12)+"-"+String(x%12+1).padStart(2,"0"), deYm=t=>{ const r=/^(\d{4})-(\d{2})$/.exec(t||""); return r? +r[1]*12+(+r[2]-1) : null; };
+  if(!metas.length){ box.innerHTML=`<div class="empty">Nenhuma meta. Crie subcategorias de poupança em Dados › Categorias.</div>`; return; }
+  box.innerHTML=metas.map(n=>{ const ivs=L.filter(iv=>iv.meta===n), g=ivs.reduce((s,iv)=>{ const a=ivAt(iv,m); return s+(a?a.val:0); },0);
+    const apo3=[m-2,m-1,m].map(x=>ITEMS.filter(i=>inM(i,x)&&isOut(i)&&(i.sub||"")===n).reduce((s,i)=>s+i.val,0)), apoM=apo3[2], media=apo3.reduce((s,v)=>s+v,0)/3;
+    const a=A[n]||{}, alvo=+a.alvo||0, pz=deYm(a.prazo), falta=Math.max(0,alvo-g), pc=alvo? Math.min(100,g/alvo*100) : 0;
+    let txt="";
+    if(!alvo) txt= g? `Defina um valor para ver quanto falta.` : `Ligue um investimento a esta meta e defina o valor.`;
+    else if(falta<=0) txt=`<b>Meta alcançada!</b>`;
+    else { txt=`Faltam <b>${BRL.format(falta)}</b>.`;
+      if(pz!==null){ const n2=pz-m; txt+= n2>0? ` Para chegar em ${fmtMLong(pz).toLowerCase()}: <b>${BRL.format(falta/n2)} por mês</b>.` : ` O prazo já passou.`; }
+      if(media>0){ const k=Math.ceil(falta/media); txt+=` Guardando como nos últimos 3 meses (${BRL.format(media)}/mês), chega em ${fmtMLong(m+k).toLowerCase()}.`; } }
+    return `<div class="ivmeta" data-meta="${esc(n)}"><h3><span>${esc(n)}</span>${alvo?`<span class="pc">${Math.floor(pc)}%</span>`:""}</h3>
+      <span class="big">${BRL.format(g)}${alvo?` <span class="small muted">de ${BRL.format(alvo)}</span>`:""}</span>
+      ${alvo?`<div class="pbar" role="progressbar" aria-valuenow="${Math.round(pc)}" aria-valuemin="0" aria-valuemax="100" aria-label="Progresso de ${esc(n)}"><i class="${pc>=100?"ok":""}" style="width:${pc}%"></i></div>`:""}
+      <p>${txt}</p>
+      <span class="inv">${ivs.length? ivs.map(iv=>esc(iv.nome)).join(", ") : "nenhum investimento ligado"}${apoM?` · guardou ${BRL.format(apoM)} em ${fmtM(m)}`:""}</span>
+      <div class="f"><label>Valor da meta (R$)<input data-f="alvo" inputmode="decimal" value="${alvo?fmtNum(alvo):""}" placeholder="0,00"></label><label>Até quando<input data-f="prazo" type="month" value="${esc(a.prazo||"")}"></label></div></div>`; }).join("");
+  box.querySelectorAll(".ivmeta").forEach(c=>{ const n=c.dataset.meta;
+    c.querySelector('[data-f="alvo"]').onchange=e=>{ const t=e.target.value.trim(), A=alvos(); A[n]=A[n]||{}; if(!t) delete A[n].alvo; else { const v=parseValue(t,false); if(!isFinite(v)){ toast("Valor não entendido. Use só números, ex.: 10.000,00"); return; } A[n].alvo=Math.round(v*100)/100; } save(); rIvMetas(selMonth); };
+    c.querySelector('[data-f="alvo"]').onkeydown=e=>{ if(e.key==="Enter") e.target.blur(); };
+    c.querySelector('[data-f="prazo"]').onchange=e=>{ const A=alvos(); A[n]=A[n]||{}; if(e.target.value) A[n].prazo=e.target.value; else delete A[n].prazo; save(); rIvMetas(selMonth); }; });
+}
 // state.invest = [{id, nome, tipo, inst, v:{mês: valor}}]. Mês sem valor repete o último valor informado antes dele.
 const IV_TIPOS=["Renda fixa (CDB, LCI, LCA)","Tesouro Direto","Poupança","Ações","Fundos imobiliários (FII)","Fundos de investimento","Previdência","Criptomoedas","Outros"];
 function invs(){ if(!Array.isArray(state.invest)) state.invest=[]; return state.invest; }
@@ -1650,9 +1709,11 @@ function ivChart(ms, vals, cur){
 function rInv(m){
   if(!$("rInv")) return;
   if(!$("ivTipo").options.length) $("ivTipo").innerHTML=IV_TIPOS.map(t=>`<option>${esc(t)}</option>`).join("");
+  { const cur=$("ivMeta").value; $("ivMeta").innerHTML=ivMetaOpts(cur); }
+  rIvMetas(m);
   const L=invs(), tot=ivTotal(m), ant=ivTotal(m-1), apo=ivAportes(m), temAnt=L.some(iv=>ivAt(iv,m-1));
   const varM=tot-ant, rend=temAnt? varM-apo : null;
-  $("ivNote").textContent= L.length? `valores de ${fmtMLong(m)} · toque no valor para atualizar` : "digite quanto você tem em cada investimento";
+  $("ivNote").textContent= L.length? `valores de ${fmtMLong(m)}` : "cadastre seus investimentos lá embaixo";
   const tile=(l,v,cls,sub)=>`<div class="t"><span class="l">${l}</span><span class="v ${cls||""}">${v}</span>${sub?`<span class="s">${sub}</span>`:""}</div>`;
   $("ivTiles").innerHTML= L.length? tile("Total investido",BRL.format(tot),"",`${L.length} ${L.length===1?"investimento":"investimentos"}`)
     + tile("Variação no mês", temAnt? (varM>=0?"+":"")+BRL.format(varM) : "—", temAnt?(varM>=0?"in":"out"):"", temAnt?`em relação a ${fmtM(m-1)}`:"sem valor no mês anterior")
@@ -1670,11 +1731,12 @@ function rInv(m){
   // lista
   $("ivList").innerHTML=L.map(iv=>{ const a=ivAt(iv,m), prev=ivAt(iv,m-1), aqui=a&&a.de===m, d= aqui&&prev? a.val-prev.val : null;
     const nota= !a? "sem valor ainda" : !aqui? `repetido de ${fmtM(a.de)}` : d===null? "" : `<span class="${d>=0?"in":"out"}">${d>=0?"+":""}${BRL.format(d)} no mês</span>`;
-    return `<div class="ivrow" data-id="${esc(iv.id)}"><span class="nm"><input data-f="nome" value="${esc(iv.nome)}" aria-label="Nome do investimento"><small>${esc(iv.tipo||"Outros")}${iv.inst?" · "+esc(iv.inst):""}</small></span>
+    return `<div class="ivrow" data-id="${esc(iv.id)}"><span class="nm"><input data-f="nome" value="${esc(iv.nome)}" aria-label="Nome do investimento"><small>${esc(iv.tipo||"Outros")}${iv.inst?" · "+esc(iv.inst):""}</small><select data-f="meta" aria-label="Meta de ${esc(iv.nome)}">${ivMetaOpts(iv.meta||"")}</select></span>
       <span class="vv"><input data-f="val" inputmode="decimal" value="${aqui?fmtNum(a.val):""}" placeholder="${a?fmtNum(a.val):"0,00"}" aria-label="Valor de ${esc(iv.nome)} em ${fmtMLong(m)}"><small class="${d!==null&&aqui?"":""}">${nota}</small></span>
       <button type="button" class="ghost x" data-del aria-label="Excluir ${esc(iv.nome)}" title="Excluir">✕</button></div>`; }).join("");
   $("ivList").querySelectorAll(".ivrow").forEach(r=>{ const iv=L.find(x=>x.id===r.dataset.id); if(!iv) return;
     r.querySelector('[data-f="nome"]').onchange=e=>{ const t=e.target.value.trim(); if(t){ iv.nome=t; save(); } else e.target.value=iv.nome; };
+    r.querySelector('[data-f="meta"]').onchange=e=>{ iv.meta=e.target.value; save(); rInv(m); };
     const vi=r.querySelector('[data-f="val"]');
     vi.onchange=()=>{ iv.v=iv.v||{}; const t=vi.value.trim(); if(!t) delete iv.v[m]; else { const n=parseValue(t,false); if(!isFinite(n)){ toast("Valor não entendido. Use só números, ex.: 1.250,00"); return; } iv.v[m]=Math.round(n*100)/100; } save(); rInv(m); };
     vi.onkeydown=e=>{ if(e.key==="Enter") vi.blur(); };
@@ -1682,7 +1744,7 @@ function rInv(m){
 }
 $("ivAdd").onsubmit=e=>{ e.preventDefault(); const nome=$("ivNome").value.trim(); if(!nome){ $("ivNome").focus(); return; }
   const t=$("ivVal").value.trim(), n=t? parseValue(t,false) : NaN; if(t && !isFinite(n)){ toast("Valor não entendido. Use só números, ex.: 1.250,00"); $("ivVal").focus(); return; }
-  const iv={id:"iv"+Date.now().toString(36)+Math.random().toString(36).slice(2,5), nome, tipo:$("ivTipo").value, inst:$("ivInst").value.trim(), v:{}};
+  const iv={id:"iv"+Date.now().toString(36)+Math.random().toString(36).slice(2,5), nome, tipo:$("ivTipo").value, inst:$("ivInst").value.trim(), meta:$("ivMeta").value, v:{}};
   if(isFinite(n)) iv.v[selMonth]=Math.round(n*100)/100;
   invs().push(iv); if(state.seed) state.seed=false; save(); $("ivNome").value=""; $("ivInst").value=""; $("ivVal").value=""; rInv(selMonth); toast(`Investimento adicionado: ${esc(nome)}.`); };
 
@@ -2455,7 +2517,7 @@ document.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer?.fil
 
 // ---------------- start ----------------
 (async()=>{
-  const h=location.hash.slice(1); if(["resumo","cartoes","analise","lancamentos","pasta","dados"].includes(h)) tab= h==="pasta"?"dados":h;
+  const h=location.hash.slice(1); if(["resumo","cartoes","invest","analise","lancamentos","pasta","dados"].includes(h)) tab= h==="pasta"?"dados":h;
   const ls=lsGet(); state= ls&&ls.versao>=3 ? Object.assign(blank(),ls) : seedState(); applyCfg();
   render();
   if(FS_OK){ const saved=await idbGet("dir");

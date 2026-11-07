@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.22";
+const VERSAO="2.23";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -313,7 +313,7 @@ function showBanner(html, cls){ const b=$("banner"); b.innerHTML=`<span>${html}<
 // troca de aba pelo usuário entra no histórico: o botão voltar do celular volta para a aba anterior em vez de sair
 function go(t, push){ if(t==="pasta") t="dados"; tab=t; if(location.hash!=="#"+t){ try{ history[push?"pushState":"replaceState"](null,"","#"+t); }catch(e){ location.hash=t; } } render(); }
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ if(b.dataset.tab!==tab) go(b.dataset.tab,true); if(b.dataset.tab==="lancamentos") setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },60); });
-window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1)||"resumo"; if(!$("drawer").hidden) dwFechar(); if(["resumo","cartoes","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
+window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1)||"resumo"; if(!$("drawer").hidden) dwFechar(); if(["resumo","cartoes","invest","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
 $("mPrev").onclick=()=>{ selMonth--; render(); };
 $("mNext").onclick=()=>{ selMonth++; render(); };
 
@@ -380,7 +380,7 @@ function render(){
   $("mCur").textContent=fmtMLong(selMonth);
   $("monthbar").hidden = tab==="pasta"||tab==="dados";
   if(state.seed && !$("banner").dataset.seen){ $("banner").dataset.seen="1"; showBanner("Mostrando os dados de exemplo. Clique em <b>Conectar pasta</b> para usar as suas faturas.","info"); }
-  ({resumo:rResumo,cartoes:rCartoes,analise:rAnalise,lancamentos:rLanc,pasta:rPasta,dados:()=>{ rDados(); rPasta(); }})[tab]();
+  ({resumo:rResumo,cartoes:rCartoes,invest:()=>rInv(selMonth),analise:rAnalise,lancamentos:rLanc,pasta:rPasta,dados:()=>{ rDados(); rPasta(); }})[tab]();
   alerts(); estAviso();
   updateCover();
 }
@@ -404,7 +404,7 @@ $("cvSkip").onclick=closeCover;
 $("cvDir").onclick=()=>{ $("bDir").click(); };
 $("cvConn").onclick=()=>{ if(!FS_OK){ $("fFiles").click(); return; } $("bDir").click(); };
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("cover").hidden) closeCover(); });
-function applyTabs(){ document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tab)); ["resumo","cartoes","analise","lancamentos","pasta","dados"].forEach(t=>$("v-"+t).hidden= !(t===tab || (t==="pasta"&&tab==="dados"))); }
+function applyTabs(){ document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tab)); ["resumo","cartoes","invest","analise","lancamentos","pasta","dados"].forEach(t=>$("v-"+t).hidden= !(t===tab || (t==="pasta"&&tab==="dados"))); }
 
 function rResumo(){
   const m=selMonth, cur=ITEMS.filter(i=>inM(i,m));
@@ -436,12 +436,40 @@ function rResumo(){
   const fut=[]; for(let k=1;k<=3;k++){ const v=ITEMS.filter(i=>inM(i,m+k)&&isOut(i)).reduce((s,i)=>s+i.val,0); fut.push({k:"f"+k,label:fmtMLong(m+k),v}); }
   $("rFut").innerHTML=barsHTML(fut.filter(f=>f.v), 0, {empty:"Nada comprometido nos próximos meses."});
   rMetas(m, cur, ins, outs);
-  rInv(m);
   rDiag(m);
   if(dwKind && !$("drawer").hidden) dwAbrir(dwKind); // painel aberto acompanha mês e modo oculto
 }
 
 // ---------------- meus investimentos (digitados à mão) ----------------
+// metas dos investimentos = subcategorias do grupo poupança (fora dívidas). state.alvos = {sub:{alvo, prazo:"AAAA-MM"}}
+function ivMetaList(){ const desp=new Set(cfg.cats.filter(c=>c.tipo==="Despesa").map(c=>c.nome));
+  return cfg.subs.filter(s=>desp.has(s[1]) && !/D[IÍ]VIDA/i.test(s[1]) && grpOf(s[1],s[0])==="pou").map(s=>s[0]); }
+function alvos(){ if(!state.alvos||typeof state.alvos!=="object") state.alvos={}; return state.alvos; }
+function ivMetaOpts(sel){ return `<option value="">Sem meta</option>`+ivMetaList().map(n=>`<option${n===sel?" selected":""}>${esc(n)}</option>`).join("")+(sel&&!ivMetaList().includes(sel)?`<option selected>${esc(sel)}</option>`:""); }
+function rIvMetas(m){
+  const box=$("ivMetas"); if(!box) return; const L=invs(), A=alvos(), metas=ivMetaList();
+  const ym=x=>Math.floor(x/12)+"-"+String(x%12+1).padStart(2,"0"), deYm=t=>{ const r=/^(\d{4})-(\d{2})$/.exec(t||""); return r? +r[1]*12+(+r[2]-1) : null; };
+  if(!metas.length){ box.innerHTML=`<div class="empty">Nenhuma meta. Crie subcategorias de poupança em Dados › Categorias.</div>`; return; }
+  box.innerHTML=metas.map(n=>{ const ivs=L.filter(iv=>iv.meta===n), g=ivs.reduce((s,iv)=>{ const a=ivAt(iv,m); return s+(a?a.val:0); },0);
+    const apo3=[m-2,m-1,m].map(x=>ITEMS.filter(i=>inM(i,x)&&isOut(i)&&(i.sub||"")===n).reduce((s,i)=>s+i.val,0)), apoM=apo3[2], media=apo3.reduce((s,v)=>s+v,0)/3;
+    const a=A[n]||{}, alvo=+a.alvo||0, pz=deYm(a.prazo), falta=Math.max(0,alvo-g), pc=alvo? Math.min(100,g/alvo*100) : 0;
+    let txt="";
+    if(!alvo) txt= g? `Defina um valor para ver quanto falta.` : `Ligue um investimento a esta meta e defina o valor.`;
+    else if(falta<=0) txt=`<b>Meta alcançada!</b>`;
+    else { txt=`Faltam <b>${BRL.format(falta)}</b>.`;
+      if(pz!==null){ const n2=pz-m; txt+= n2>0? ` Para chegar em ${fmtMLong(pz).toLowerCase()}: <b>${BRL.format(falta/n2)} por mês</b>.` : ` O prazo já passou.`; }
+      if(media>0){ const k=Math.ceil(falta/media); txt+=` Guardando como nos últimos 3 meses (${BRL.format(media)}/mês), chega em ${fmtMLong(m+k).toLowerCase()}.`; } }
+    return `<div class="ivmeta" data-meta="${esc(n)}"><h3><span>${esc(n)}</span>${alvo?`<span class="pc">${Math.floor(pc)}%</span>`:""}</h3>
+      <span class="big">${BRL.format(g)}${alvo?` <span class="small muted">de ${BRL.format(alvo)}</span>`:""}</span>
+      ${alvo?`<div class="pbar" role="progressbar" aria-valuenow="${Math.round(pc)}" aria-valuemin="0" aria-valuemax="100" aria-label="Progresso de ${esc(n)}"><i class="${pc>=100?"ok":""}" style="width:${pc}%"></i></div>`:""}
+      <p>${txt}</p>
+      <span class="inv">${ivs.length? ivs.map(iv=>esc(iv.nome)).join(", ") : "nenhum investimento ligado"}${apoM?` · guardou ${BRL.format(apoM)} em ${fmtM(m)}`:""}</span>
+      <div class="f"><label>Valor da meta (R$)<input data-f="alvo" inputmode="decimal" value="${alvo?fmtNum(alvo):""}" placeholder="0,00"></label><label>Até quando<input data-f="prazo" type="month" value="${esc(a.prazo||"")}"></label></div></div>`; }).join("");
+  box.querySelectorAll(".ivmeta").forEach(c=>{ const n=c.dataset.meta;
+    c.querySelector('[data-f="alvo"]').onchange=e=>{ const t=e.target.value.trim(), A=alvos(); A[n]=A[n]||{}; if(!t) delete A[n].alvo; else { const v=parseValue(t,false); if(!isFinite(v)){ toast("Valor não entendido. Use só números, ex.: 10.000,00"); return; } A[n].alvo=Math.round(v*100)/100; } save(); rIvMetas(selMonth); };
+    c.querySelector('[data-f="alvo"]').onkeydown=e=>{ if(e.key==="Enter") e.target.blur(); };
+    c.querySelector('[data-f="prazo"]').onchange=e=>{ const A=alvos(); A[n]=A[n]||{}; if(e.target.value) A[n].prazo=e.target.value; else delete A[n].prazo; save(); rIvMetas(selMonth); }; });
+}
 // state.invest = [{id, nome, tipo, inst, v:{mês: valor}}]. Mês sem valor repete o último valor informado antes dele.
 const IV_TIPOS=["Renda fixa (CDB, LCI, LCA)","Tesouro Direto","Poupança","Ações","Fundos imobiliários (FII)","Fundos de investimento","Previdência","Criptomoedas","Outros"];
 function invs(){ if(!Array.isArray(state.invest)) state.invest=[]; return state.invest; }
@@ -463,9 +491,11 @@ function ivChart(ms, vals, cur){
 function rInv(m){
   if(!$("rInv")) return;
   if(!$("ivTipo").options.length) $("ivTipo").innerHTML=IV_TIPOS.map(t=>`<option>${esc(t)}</option>`).join("");
+  { const cur=$("ivMeta").value; $("ivMeta").innerHTML=ivMetaOpts(cur); }
+  rIvMetas(m);
   const L=invs(), tot=ivTotal(m), ant=ivTotal(m-1), apo=ivAportes(m), temAnt=L.some(iv=>ivAt(iv,m-1));
   const varM=tot-ant, rend=temAnt? varM-apo : null;
-  $("ivNote").textContent= L.length? `valores de ${fmtMLong(m)} · toque no valor para atualizar` : "digite quanto você tem em cada investimento";
+  $("ivNote").textContent= L.length? `valores de ${fmtMLong(m)}` : "cadastre seus investimentos lá embaixo";
   const tile=(l,v,cls,sub)=>`<div class="t"><span class="l">${l}</span><span class="v ${cls||""}">${v}</span>${sub?`<span class="s">${sub}</span>`:""}</div>`;
   $("ivTiles").innerHTML= L.length? tile("Total investido",BRL.format(tot),"",`${L.length} ${L.length===1?"investimento":"investimentos"}`)
     + tile("Variação no mês", temAnt? (varM>=0?"+":"")+BRL.format(varM) : "—", temAnt?(varM>=0?"in":"out"):"", temAnt?`em relação a ${fmtM(m-1)}`:"sem valor no mês anterior")
@@ -483,11 +513,12 @@ function rInv(m){
   // lista
   $("ivList").innerHTML=L.map(iv=>{ const a=ivAt(iv,m), prev=ivAt(iv,m-1), aqui=a&&a.de===m, d= aqui&&prev? a.val-prev.val : null;
     const nota= !a? "sem valor ainda" : !aqui? `repetido de ${fmtM(a.de)}` : d===null? "" : `<span class="${d>=0?"in":"out"}">${d>=0?"+":""}${BRL.format(d)} no mês</span>`;
-    return `<div class="ivrow" data-id="${esc(iv.id)}"><span class="nm"><input data-f="nome" value="${esc(iv.nome)}" aria-label="Nome do investimento"><small>${esc(iv.tipo||"Outros")}${iv.inst?" · "+esc(iv.inst):""}</small></span>
+    return `<div class="ivrow" data-id="${esc(iv.id)}"><span class="nm"><input data-f="nome" value="${esc(iv.nome)}" aria-label="Nome do investimento"><small>${esc(iv.tipo||"Outros")}${iv.inst?" · "+esc(iv.inst):""}</small><select data-f="meta" aria-label="Meta de ${esc(iv.nome)}">${ivMetaOpts(iv.meta||"")}</select></span>
       <span class="vv"><input data-f="val" inputmode="decimal" value="${aqui?fmtNum(a.val):""}" placeholder="${a?fmtNum(a.val):"0,00"}" aria-label="Valor de ${esc(iv.nome)} em ${fmtMLong(m)}"><small class="${d!==null&&aqui?"":""}">${nota}</small></span>
       <button type="button" class="ghost x" data-del aria-label="Excluir ${esc(iv.nome)}" title="Excluir">✕</button></div>`; }).join("");
   $("ivList").querySelectorAll(".ivrow").forEach(r=>{ const iv=L.find(x=>x.id===r.dataset.id); if(!iv) return;
     r.querySelector('[data-f="nome"]').onchange=e=>{ const t=e.target.value.trim(); if(t){ iv.nome=t; save(); } else e.target.value=iv.nome; };
+    r.querySelector('[data-f="meta"]').onchange=e=>{ iv.meta=e.target.value; save(); rInv(m); };
     const vi=r.querySelector('[data-f="val"]');
     vi.onchange=()=>{ iv.v=iv.v||{}; const t=vi.value.trim(); if(!t) delete iv.v[m]; else { const n=parseValue(t,false); if(!isFinite(n)){ toast("Valor não entendido. Use só números, ex.: 1.250,00"); return; } iv.v[m]=Math.round(n*100)/100; } save(); rInv(m); };
     vi.onkeydown=e=>{ if(e.key==="Enter") vi.blur(); };
@@ -495,7 +526,7 @@ function rInv(m){
 }
 $("ivAdd").onsubmit=e=>{ e.preventDefault(); const nome=$("ivNome").value.trim(); if(!nome){ $("ivNome").focus(); return; }
   const t=$("ivVal").value.trim(), n=t? parseValue(t,false) : NaN; if(t && !isFinite(n)){ toast("Valor não entendido. Use só números, ex.: 1.250,00"); $("ivVal").focus(); return; }
-  const iv={id:"iv"+Date.now().toString(36)+Math.random().toString(36).slice(2,5), nome, tipo:$("ivTipo").value, inst:$("ivInst").value.trim(), v:{}};
+  const iv={id:"iv"+Date.now().toString(36)+Math.random().toString(36).slice(2,5), nome, tipo:$("ivTipo").value, inst:$("ivInst").value.trim(), meta:$("ivMeta").value, v:{}};
   if(isFinite(n)) iv.v[selMonth]=Math.round(n*100)/100;
   invs().push(iv); if(state.seed) state.seed=false; save(); $("ivNome").value=""; $("ivInst").value=""; $("ivVal").value=""; rInv(selMonth); toast(`Investimento adicionado: ${esc(nome)}.`); };
 
@@ -1268,7 +1299,7 @@ document.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer?.fil
 
 // ---------------- start ----------------
 (async()=>{
-  const h=location.hash.slice(1); if(["resumo","cartoes","analise","lancamentos","pasta","dados"].includes(h)) tab= h==="pasta"?"dados":h;
+  const h=location.hash.slice(1); if(["resumo","cartoes","invest","analise","lancamentos","pasta","dados"].includes(h)) tab= h==="pasta"?"dados":h;
   const ls=lsGet(); state= ls&&ls.versao>=3 ? Object.assign(blank(),ls) : seedState(); applyCfg();
   render();
   if(FS_OK){ const saved=await idbGet("dir");
