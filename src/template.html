@@ -65,6 +65,29 @@ main.wrap{display:flex;flex-direction:column;gap:18px;padding-block:6px 60px}
 .tile .sub{font-size:.82rem;color:var(--muted)}
 .in{color:var(--in)} .out{color:var(--out)}
 .grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+/* v2.22: meus investimentos */
+.ivtiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.ivtiles .t{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ivtiles .t .l{font-size:.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.ivtiles .t .v{font-family:var(--f-num);font-weight:700;font-size:1.05rem;overflow-wrap:anywhere}
+.ivtiles .t .v.in{color:var(--in)} .ivtiles .t .v.out{color:var(--out)}
+.ivtiles .t .s{font-size:.78rem;color:var(--muted)}
+.ivevo svg{display:block;width:100%;height:auto}
+.ivlist{display:flex;flex-direction:column}
+.ivrow{display:grid;grid-template-columns:minmax(0,1fr) 9.5rem auto;gap:6px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.ivrow .nm{min-width:0;display:flex;flex-direction:column;gap:2px}
+.ivrow .nm input{font:inherit;font-weight:700;border:1px solid transparent;border-radius:8px;padding:4px 6px;background:none;color:var(--ink);min-width:0;width:100%}
+.ivrow .nm input:focus{border-color:var(--line);background:var(--surface)}
+.ivrow .nm small{color:var(--muted);padding:0 6px}
+.ivrow .vv{display:flex;flex-direction:column;gap:2px;align-items:stretch}
+.ivrow .vv input{font:inherit;font-family:var(--f-num);text-align:right;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--surface);color:var(--ink);min-width:0;width:100%}
+.ivrow .vv small{font-size:.74rem;color:var(--muted);text-align:right}
+.ivrow .vv small.in{color:var(--in)} .ivrow .vv small.out{color:var(--out)}
+.ivrow .x{padding:6px 9px;color:var(--muted)}
+.ivbtn{justify-content:flex-end}
+@media (max-width:760px){.ivtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.ivrow{grid-template-columns:minmax(0,1fr) 7.6rem auto}#ivAdd .form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+body.oculto .ivrow .vv input{filter:blur(6px)} body.oculto .ivrow .vv input:focus{filter:none} body.oculto .ivevo svg text{filter:blur(4px)}
 /* v2.21: diagnóstico "Onde dá para economizar" */
 .dgout{display:flex;flex-direction:column;gap:10px}
 .dgtop{background:var(--accent-soft);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px}
@@ -709,6 +732,25 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
         <header><h2>Já comprometido</h2><span class="small muted">parcelas e lançamentos futuros</span></header>
         <div class="bars" id="rFut"></div>
       </div>
+    </div>
+    <div class="panel" id="rInv">
+      <header><h2>Meus investimentos</h2><span class="small muted" id="ivNote"></span></header>
+      <div class="ivtiles" id="ivTiles"></div>
+      <div class="ivevo" id="ivEvo"></div>
+      <div class="bars" id="ivTipos"></div>
+      <div class="ivlist" id="ivList"></div>
+      <details class="addbox" id="ivAddBox">
+        <summary><span class="h2">+ Adicionar investimento</span><span class="small muted">Ex.: CDB do banco, Tesouro Selic, ações, previdência</span></summary>
+        <form id="ivAdd" autocomplete="off">
+          <div class="form">
+            <label class="wide">Nome<input id="ivNome" type="text" placeholder="Ex.: Tesouro Selic 2029" required></label>
+            <label>Tipo<select id="ivTipo"></select></label>
+            <label>Onde está<input id="ivInst" type="text" placeholder="Ex.: Nubank"></label>
+            <label>Valor hoje (R$)<input id="ivVal" type="text" inputmode="decimal" placeholder="0,00"></label>
+            <label class="ivbtn"><span>&nbsp;</span><button type="submit" class="primary">Adicionar</button></label>
+          </div>
+        </form>
+      </details>
     </div>
     <div class="panel" id="rDiag">
       <header><h2>Onde dá para economizar</h2><button type="button" class="primary" id="dgRun">Rodar diagnóstico</button></header>

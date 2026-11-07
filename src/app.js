@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.21";
+const VERSAO="2.22";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -436,9 +436,68 @@ function rResumo(){
   const fut=[]; for(let k=1;k<=3;k++){ const v=ITEMS.filter(i=>inM(i,m+k)&&isOut(i)).reduce((s,i)=>s+i.val,0); fut.push({k:"f"+k,label:fmtMLong(m+k),v}); }
   $("rFut").innerHTML=barsHTML(fut.filter(f=>f.v), 0, {empty:"Nada comprometido nos próximos meses."});
   rMetas(m, cur, ins, outs);
+  rInv(m);
   rDiag(m);
   if(dwKind && !$("drawer").hidden) dwAbrir(dwKind); // painel aberto acompanha mês e modo oculto
 }
+
+// ---------------- meus investimentos (digitados à mão) ----------------
+// state.invest = [{id, nome, tipo, inst, v:{mês: valor}}]. Mês sem valor repete o último valor informado antes dele.
+const IV_TIPOS=["Renda fixa (CDB, LCI, LCA)","Tesouro Direto","Poupança","Ações","Fundos imobiliários (FII)","Fundos de investimento","Previdência","Criptomoedas","Outros"];
+function invs(){ if(!Array.isArray(state.invest)) state.invest=[]; return state.invest; }
+function ivAt(iv, m){ const v=iv.v||{}; if(v[m]!=null) return {val:+v[m], de:m}; let best=null; for(const k in v){ const x=+k; if(x<m && (best===null||x>best)) best=x; } return best===null? null : {val:+v[best], de:best}; }
+function ivTotal(m){ return invs().reduce((s,iv)=>{ const a=ivAt(iv,m); return s+(a?a.val:0); },0); }
+function ivAportes(m){ return ITEMS.filter(i=>inM(i,m)&&isOut(i)&&grpOf(i.cat,i.sub||"")==="pou"&&!/D[IÍ]VIDA/i.test(i.cat)).reduce((s,i)=>s+i.val,0); }
+function ivFirst(){ let f=null; invs().forEach(iv=>{ for(const k in (iv.v||{})){ const x=+k; if(f===null||x<f) f=x; } }); return f; }
+function ivChart(ms, vals, cur){
+  const box=$("ivEvo"), W=Math.max(300,(box&&box.clientWidth)||760), est=W<520, H=est?170:190, pl=est?44:54, pr=8, pt=20, pb=28, fs=est?10:11;
+  const nice=niceMax(Math.max(...vals,1)), bw=(W-pl-pr)/ms.length;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Total investido mês a mês">`;
+  [0,nice/2,nice].forEach(t=>{ const y=pt+(H-pt-pb)*(1-t/nice); s+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl-6}" y="${y+4}" text-anchor="end" font-size="${fs}" fill="var(--muted)" font-family="JetBrains Mono, monospace">${t>=1000?(t/1000).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mil":Math.round(t)}</text>`; });
+  ms.forEach((x,i)=>{ const h=(H-pt-pb)*(vals[i]/nice), w=Math.min(bw*0.6,48), X=pl+i*bw+(bw-w)/2, Y=H-pb-h;
+    s+=`<rect x="${X}" y="${Y}" width="${w}" height="${Math.max(0,h)}" rx="3" fill="#6a4fc0" opacity="${x===cur?1:0.45}"><title>${fmtMLong(x)}: ${BRL.format(vals[i])}</title></rect>`;
+    s+=`<text x="${X+w/2}" y="${H-pb+15}" text-anchor="middle" font-size="${fs}" fill="${x===cur?"var(--ink)":"var(--muted)"}" font-weight="${x===cur?700:400}">${fmtM(x)}</text>`;
+    if(x===cur&&vals[i]) s+=`<text x="${X+w/2}" y="${Y-5}" text-anchor="middle" font-size="${fs}" fill="var(--ink)" font-family="JetBrains Mono, monospace">${oculto?"•••":Math.round(vals[i]).toLocaleString("pt-BR")}</text>`; });
+  return s+"</svg>";
+}
+function rInv(m){
+  if(!$("rInv")) return;
+  if(!$("ivTipo").options.length) $("ivTipo").innerHTML=IV_TIPOS.map(t=>`<option>${esc(t)}</option>`).join("");
+  const L=invs(), tot=ivTotal(m), ant=ivTotal(m-1), apo=ivAportes(m), temAnt=L.some(iv=>ivAt(iv,m-1));
+  const varM=tot-ant, rend=temAnt? varM-apo : null;
+  $("ivNote").textContent= L.length? `valores de ${fmtMLong(m)} · toque no valor para atualizar` : "digite quanto você tem em cada investimento";
+  const tile=(l,v,cls,sub)=>`<div class="t"><span class="l">${l}</span><span class="v ${cls||""}">${v}</span>${sub?`<span class="s">${sub}</span>`:""}</div>`;
+  $("ivTiles").innerHTML= L.length? tile("Total investido",BRL.format(tot),"",`${L.length} ${L.length===1?"investimento":"investimentos"}`)
+    + tile("Variação no mês", temAnt? (varM>=0?"+":"")+BRL.format(varM) : "—", temAnt?(varM>=0?"in":"out"):"", temAnt?`em relação a ${fmtM(m-1)}`:"sem valor no mês anterior")
+    + tile("Aportes do mês",BRL.format(apo),"","pelos seus lançamentos de poupança")
+    + tile("Rendimento estimado", rend===null? "—" : (rend>=0?"+":"")+BRL.format(rend), rend===null?"":(rend>=0?"in":"out"), rend===null? "precisa do valor do mês anterior" : "variação − aportes") : "";
+  $("ivAddBox").open = $("ivAddBox").open || !L.length;
+  // evolução: do primeiro mês com valor até o mês escolhido (até 12 meses)
+  const f=ivFirst();
+  if(f!==null && f<=m){ const ini=Math.max(f, m-((($("ivEvo").clientWidth||760)<520)?5:11)), ms=[]; for(let x=ini;x<=m;x++) ms.push(x); $("ivEvo").innerHTML= ms.length>1? ivChart(ms, ms.map(ivTotal), m) : ""; }
+  else $("ivEvo").innerHTML="";
+  // por tipo
+  const tipos=new Map(); L.forEach(iv=>{ const a=ivAt(iv,m); if(!a||!a.val) return; const k=iv.tipo||"Outros"; tipos.set(k,(tipos.get(k)||0)+a.val); });
+  const rows=[...tipos].sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,label:k,v,c:PALETTE[IV_TIPOS.indexOf(k)%PALETTE.length]||"#6a4fc0"}));
+  $("ivTipos").innerHTML= rows.length>1? barsHTML(rows, tot) : "";
+  // lista
+  $("ivList").innerHTML=L.map(iv=>{ const a=ivAt(iv,m), prev=ivAt(iv,m-1), aqui=a&&a.de===m, d= aqui&&prev? a.val-prev.val : null;
+    const nota= !a? "sem valor ainda" : !aqui? `repetido de ${fmtM(a.de)}` : d===null? "" : `<span class="${d>=0?"in":"out"}">${d>=0?"+":""}${BRL.format(d)} no mês</span>`;
+    return `<div class="ivrow" data-id="${esc(iv.id)}"><span class="nm"><input data-f="nome" value="${esc(iv.nome)}" aria-label="Nome do investimento"><small>${esc(iv.tipo||"Outros")}${iv.inst?" · "+esc(iv.inst):""}</small></span>
+      <span class="vv"><input data-f="val" inputmode="decimal" value="${aqui?fmtNum(a.val):""}" placeholder="${a?fmtNum(a.val):"0,00"}" aria-label="Valor de ${esc(iv.nome)} em ${fmtMLong(m)}"><small class="${d!==null&&aqui?"":""}">${nota}</small></span>
+      <button type="button" class="ghost x" data-del aria-label="Excluir ${esc(iv.nome)}" title="Excluir">✕</button></div>`; }).join("");
+  $("ivList").querySelectorAll(".ivrow").forEach(r=>{ const iv=L.find(x=>x.id===r.dataset.id); if(!iv) return;
+    r.querySelector('[data-f="nome"]').onchange=e=>{ const t=e.target.value.trim(); if(t){ iv.nome=t; save(); } else e.target.value=iv.nome; };
+    const vi=r.querySelector('[data-f="val"]');
+    vi.onchange=()=>{ iv.v=iv.v||{}; const t=vi.value.trim(); if(!t) delete iv.v[m]; else { const n=parseValue(t,false); if(!isFinite(n)){ toast("Valor não entendido. Use só números, ex.: 1.250,00"); return; } iv.v[m]=Math.round(n*100)/100; } save(); rInv(m); };
+    vi.onkeydown=e=>{ if(e.key==="Enter") vi.blur(); };
+    r.querySelector("[data-del]").onclick=()=>{ const pos=L.indexOf(iv); L.splice(pos,1); save(); rInv(m); toast(`Excluído: ${esc(iv.nome)}.`,[{label:"Desfazer",run:()=>{ invs().splice(pos,0,iv); save(); rInv(selMonth); }}]); }; });
+}
+$("ivAdd").onsubmit=e=>{ e.preventDefault(); const nome=$("ivNome").value.trim(); if(!nome){ $("ivNome").focus(); return; }
+  const t=$("ivVal").value.trim(), n=t? parseValue(t,false) : NaN; if(t && !isFinite(n)){ toast("Valor não entendido. Use só números, ex.: 1.250,00"); $("ivVal").focus(); return; }
+  const iv={id:"iv"+Date.now().toString(36)+Math.random().toString(36).slice(2,5), nome, tipo:$("ivTipo").value, inst:$("ivInst").value.trim(), v:{}};
+  if(isFinite(n)) iv.v[selMonth]=Math.round(n*100)/100;
+  invs().push(iv); if(state.seed) state.seed=false; save(); $("ivNome").value=""; $("ivInst").value=""; $("ivVal").value=""; rInv(selMonth); toast(`Investimento adicionado: ${esc(nome)}.`); };
 
 // ---------------- diagnóstico: onde dá para economizar ----------------
 // Moradia, saúde, educação (necessidades) e poupança/dívidas não recebem sugestão de corte.
