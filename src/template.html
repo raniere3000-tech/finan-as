@@ -65,6 +65,33 @@ main.wrap{display:flex;flex-direction:column;gap:18px;padding-block:6px 60px}
 .tile .sub{font-size:.82rem;color:var(--muted)}
 .in{color:var(--in)} .out{color:var(--out)}
 .grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+/* v2.24: orçamento por categoria */
+.obalert{background:var(--out-soft);color:var(--out);border-radius:10px;padding:10px 12px;font-size:.9rem}
+.obalert b{font-weight:800}
+.oblist{display:flex;flex-direction:column}
+.obcat{border-top:1px solid var(--line)}
+.obcat:first-child{border-top:none}
+.obrow{display:grid;grid-template-columns:minmax(0,1fr) 7.2rem;gap:6px 12px;align-items:center;padding:10px 0}
+.obrow .nm{display:flex;flex-direction:column;gap:5px;min-width:0}
+.obrow .t{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 8px;align-items:baseline;min-width:0}
+.obrow .t .n{flex:1 1 9rem}
+@media (max-width:520px){.obrow .t{flex-direction:column;align-items:stretch}.obrow .t .n{flex:none}}
+.obrow .t .n{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--ink);text-align:left;cursor:pointer}
+.obrow.sub .t .n{font-weight:500;cursor:default}
+.obrow .t .g{font-family:var(--f-num);font-size:.86rem;white-space:nowrap;color:var(--muted)}
+.obrow .t .g b{color:var(--ink)}
+.obrow .pbar{height:8px;border-radius:8px;background:var(--soft);overflow:hidden}
+.obrow .pbar i{display:block;height:100%;border-radius:8px;background:var(--accent)}
+.obrow .pbar i.w{background:#d39a17} .obrow .pbar i.x{background:var(--out)}
+.obrow .s{font-size:.8rem;color:var(--muted)} .obrow .s.x{color:var(--out);font-weight:700} .obrow .s.ok{color:var(--in)}
+.obrow input{font:inherit;font-family:var(--f-num);text-align:right;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--surface);color:var(--ink);min-width:0;width:100%}
+.obrow.sub{padding-left:14px}
+.obsubs{display:none;padding-bottom:6px}
+.obcat.open .obsubs{display:block}
+.obcat .tg{display:inline-block;color:var(--muted);margin-right:4px;transition:transform .15s}
+.obcat.open .tg{transform:rotate(90deg)}
+body.oculto .obrow input{filter:blur(6px)} body.oculto .obrow input:focus{filter:none}
+@media (max-width:520px){.obrow{grid-template-columns:minmax(0,1fr) 6.4rem}}
 /* v2.22: meus investimentos */
 .ivtiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .ivtiles .t{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -691,6 +718,7 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
 <nav class="tabs" aria-label="Seções"><div class="wrap" role="tablist">
   <button class="tab" role="tab" data-tab="resumo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 13h4v7H4zM10 8h4v12h-4zM16 4h4v16h-4z"/></svg><span class="tl">Resumo</span></button>
   <button class="tab" role="tab" data-tab="cartoes" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg><span class="tl">Cartões</span></button>
+  <button class="tab" role="tab" data-tab="orcamento" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5.5 5.5"/></svg><span class="tl">Orçamento</span></button>
   <button class="tab add" aria-label="Adicionar lançamento" role="tab" data-tab="lancamentos" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-width="2.6" stroke-linecap="round"/></svg><span class="tl">Lançar</span></button>
   <button class="tab" role="tab" data-tab="invest" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg><span class="tl">Investir</span></button>
   <button class="tab" role="tab" data-tab="analise" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span class="tl">Análise</span></button>
@@ -810,6 +838,20 @@ button.nuvem[data-st="pend"] .nv-p{display:inline;animation:nvp 1s ease-in-out i
 
   <!-- ANALISE -->
   <!-- INVESTIMENTOS -->
+  <!-- ORÇAMENTO -->
+  <section class="view" id="v-orcamento" hidden>
+    <div class="panel">
+      <header><h2>Orçamento do mês</h2><div class="txhead"><button type="button" class="ghost" id="obSug" title="Usa a média dos últimos 3 meses">Sugerir limites</button></div></header>
+      <p class="small muted" style="margin:0">Defina quanto quer gastar por mês em cada categoria. O limite vale para todos os meses. Toque numa categoria para pôr limite nas subcategorias.</p>
+      <div class="ivtiles" id="obTiles"></div>
+      <div class="obalert" id="obAlert" hidden></div>
+    </div>
+    <div class="panel">
+      <header><h2>Categorias</h2><span class="small muted" id="obNote"></span></header>
+      <div class="oblist" id="obList"></div>
+    </div>
+  </section>
+
   <section class="view" id="v-invest" hidden>
     <div class="panel" id="rInv">
       <header><h2>Meus investimentos</h2><span class="small muted" id="ivNote"></span></header>

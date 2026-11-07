@@ -18,7 +18,7 @@ const PALETTE=["#17806b","#2a6496","#b54728","#8a5cc2","#c28a12","#3d8f3d","#c24
 
 // ---------------- state ----------------
 // versão do leitor (mude aqui a cada atualização)
-const VERSAO="2.23";
+const VERSAO="2.24";
 document.querySelectorAll("[data-ver]").forEach(e=>e.textContent="v"+VERSAO);
 const blank=()=>({versao:3, atualizado:null, cfg:null, cartoes:JSON.parse(JSON.stringify(DEFAULTS.cards)), arquivos:[], edicoes:{}, manuais:[], regras:[], extras:defaultExtras(), metas:{pct:{nec:50,des:30,pou:20},renda:"",map:{}}, pasta:null, seed:false});
 let state=blank(), cfg=DEFAULTS, dirHandle=null, saveTimer=null;
@@ -313,7 +313,7 @@ function showBanner(html, cls){ const b=$("banner"); b.innerHTML=`<span>${html}<
 // troca de aba pelo usuário entra no histórico: o botão voltar do celular volta para a aba anterior em vez de sair
 function go(t, push){ if(t==="pasta") t="dados"; tab=t; if(location.hash!=="#"+t){ try{ history[push?"pushState":"replaceState"](null,"","#"+t); }catch(e){ location.hash=t; } } render(); }
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ if(b.dataset.tab!==tab) go(b.dataset.tab,true); if(b.dataset.tab==="lancamentos") setTimeout(()=>{ const i=$("lTx").querySelector("tr.newrow [data-f=desc]"); if(i) i.focus(); },60); });
-window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1)||"resumo"; if(!$("drawer").hidden) dwFechar(); if(["resumo","cartoes","invest","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
+window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1)||"resumo"; if(!$("drawer").hidden) dwFechar(); if(["resumo","cartoes","orcamento","invest","analise","lancamentos","pasta","dados"].includes(h)){ const t=h==="pasta"?"dados":h; if(t!==tab){ tab=t; render(); } } });
 $("mPrev").onclick=()=>{ selMonth--; render(); };
 $("mNext").onclick=()=>{ selMonth++; render(); };
 
@@ -380,7 +380,7 @@ function render(){
   $("mCur").textContent=fmtMLong(selMonth);
   $("monthbar").hidden = tab==="pasta"||tab==="dados";
   if(state.seed && !$("banner").dataset.seen){ $("banner").dataset.seen="1"; showBanner("Mostrando os dados de exemplo. Clique em <b>Conectar pasta</b> para usar as suas faturas.","info"); }
-  ({resumo:rResumo,cartoes:rCartoes,invest:()=>rInv(selMonth),analise:rAnalise,lancamentos:rLanc,pasta:rPasta,dados:()=>{ rDados(); rPasta(); }})[tab]();
+  ({resumo:rResumo,cartoes:rCartoes,orcamento:rOrc,invest:()=>rInv(selMonth),analise:rAnalise,lancamentos:rLanc,pasta:rPasta,dados:()=>{ rDados(); rPasta(); }})[tab]();
   alerts(); estAviso();
   updateCover();
 }
@@ -404,7 +404,7 @@ $("cvSkip").onclick=closeCover;
 $("cvDir").onclick=()=>{ $("bDir").click(); };
 $("cvConn").onclick=()=>{ if(!FS_OK){ $("fFiles").click(); return; } $("bDir").click(); };
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("cover").hidden) closeCover(); });
-function applyTabs(){ document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tab)); ["resumo","cartoes","invest","analise","lancamentos","pasta","dados"].forEach(t=>$("v-"+t).hidden= !(t===tab || (t==="pasta"&&tab==="dados"))); }
+function applyTabs(){ document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tab)); ["resumo","cartoes","orcamento","invest","analise","lancamentos","pasta","dados"].forEach(t=>$("v-"+t).hidden= !(t===tab || (t==="pasta"&&tab==="dados"))); }
 
 function rResumo(){
   const m=selMonth, cur=ITEMS.filter(i=>inM(i,m));
@@ -439,6 +439,46 @@ function rResumo(){
   rDiag(m);
   if(dwKind && !$("drawer").hidden) dwAbrir(dwKind); // painel aberto acompanha mês e modo oculto
 }
+
+// ---------------- orçamento por categoria ----------------
+// state.orc = {"c:CATEGORIA": limite, "s:CATEGORIA||SUB": limite} — o mesmo limite vale para todos os meses
+function orc(){ if(!state.orc||typeof state.orc!=="object") state.orc={}; return state.orc; }
+const obAbertas=new Set();
+function obCats(){ return cfg.cats.filter(c=>c.tipo==="Despesa").map(c=>c.nome); }
+function obGasto(m){ const G={}; ITEMS.filter(i=>inM(i,m)&&isOut(i)).forEach(i=>{ G["c:"+i.cat]=(G["c:"+i.cat]||0)+i.val; const k="s:"+i.cat+"||"+(i.sub||""); G[k]=(G[k]||0)+i.val; }); return G; }
+function obLimCat(cat){ const O=orc(); if(O["c:"+cat]!=null) return +O["c:"+cat]; let s=0, tem=false; for(const k in O) if(k.startsWith("s:"+cat+"||")){ s+=+O[k]; tem=true; } return tem? s : null; }
+function rOrc(){
+  const m=selMonth, O=orc(), G=obGasto(m), cats=obCats();
+  const now=new Date(), mNow=now.getFullYear()*12+now.getMonth(), diasMes=new Date(Math.floor(m/12), m%12+1, 0).getDate(), resta= m===mNow? diasMes-now.getDate()+1 : null;
+  let tl=0, tg=0; const passou=[];
+  cats.forEach(c=>{ const L=obLimCat(c); if(L==null) return; const g=G["c:"+c]||0; tl+=L; tg+=g; if(g>L+0.005) passou.push({n:c,d:g-L}); });
+  for(const k in O) if(k.startsWith("s:")){ const g=G[k]||0, L=+O[k]; if(g>L+0.005) passou.push({n:k.split("||")[1],d:g-L}); }
+  const sobra=tl-tg, tile=(l,v,cls,sub)=>`<div class="t"><span class="l">${l}</span><span class="v ${cls||""}">${v}</span>${sub?`<span class="s">${sub}</span>`:""}</div>`;
+  $("obTiles").innerHTML= tile("Orçamento",tl?BRL.format(tl):"—","",tl?"soma dos limites":"nenhum limite ainda")
+    + tile("Gasto",BRL.format(tg),"",tl?"nas categorias com limite":"")
+    + tile(sobra>=0?"Sobra":"Passou",tl?BRL.format(Math.abs(sobra)):"—",tl?(sobra>=0?"in":"out"):"",tl?`${Math.round(tg/tl*100)}% usado`:"")
+    + tile("Por dia", resta&&sobra>0? BRL.format(sobra/resta) : "—","", resta? `faltam ${resta} ${resta===1?"dia":"dias"} no mês` : (m<mNow?"mês já fechado":"mês ainda não começou"));
+  passou.sort((a,b)=>b.d-a.d);
+  $("obAlert").hidden=!passou.length;
+  $("obAlert").innerHTML= passou.length? `Passou do limite em ${fmtMLong(m).toLowerCase()}: `+passou.map(p=>`<b>${esc(p.n)}</b> +${BRL.format(p.d)}`).join(" · ") : "";
+  $("obNote").textContent=`${fmtMLong(m)} · gasto / limite`;
+  const bar=(g,L)=>{ if(L==null||L<=0) return ""; const pc=g/L*100; return `<div class="pbar"><i class="${pc>100?"x":pc>=80?"w":""}" style="width:${Math.min(100,pc)}%"></i></div>`; };
+  const st=(g,L)=> L==null? `<span class="s">sem limite</span>` : g>L+0.005? `<span class="s x">passou ${BRL.format(g-L)}</span>` : `<span class="s ok">sobram ${BRL.format(L-g)}</span>`;
+  const subsDe=c=>{ const set=new Set(subOptions(c)); for(const k in G) if(k.startsWith("s:"+c+"||")){ const n=k.split("||")[1]; if(n) set.add(n); } return [...set].sort((a,b)=>(G["s:"+c+"||"+b]||0)-(G["s:"+c+"||"+a]||0)||a.localeCompare(b,"pt-BR")); };
+  $("obList").innerHTML=cats.map(c=>({c,g:G["c:"+c]||0,L:obLimCat(c)})).sort((a,b)=>((b.L!=null)-(a.L!=null))||b.g-a.g).map(({c,g,L})=>{
+    const subs=subsDe(c), soma= O["c:"+c]==null && L!=null;
+    return `<div class="obcat${obAbertas.has(c)?" open":""}" data-c="${esc(c)}"><div class="obrow"><span class="nm"><span class="t"><button type="button" class="n" data-tog aria-expanded="${obAbertas.has(c)}"><span class="tg">▸</span>${esc(c)}</button><span class="g"><b>${BRL.format(g)}</b>${L!=null?" / "+BRL.format(L):""}</span></span>${bar(g,L)}${st(g,L)}</span>
+      <input data-k="c:${esc(c)}" inputmode="decimal" value="${O["c:"+c]!=null?fmtNum(+O["c:"+c]):""}" placeholder="${soma?fmtNum(L):"limite"}" aria-label="Limite de ${esc(c)}"></div>
+      <div class="obsubs">${subs.map(s=>{ const k="s:"+c+"||"+s, gs=G[k]||0, Ls=O[k]!=null?+O[k]:null; return `<div class="obrow sub"><span class="nm"><span class="t"><span class="n">${esc(s)}</span><span class="g"><b>${BRL.format(gs)}</b>${Ls!=null?" / "+BRL.format(Ls):""}</span></span>${bar(gs,Ls)}${Ls!=null?st(gs,Ls):""}</span><input data-k="${esc(k)}" inputmode="decimal" value="${Ls!=null?fmtNum(Ls):""}" placeholder="limite" aria-label="Limite de ${esc(s)}"></div>`; }).join("")}</div></div>`; }).join("");
+  $("obList").querySelectorAll("[data-tog]").forEach(b=>b.onclick=()=>{ const el=b.closest(".obcat"), c=el.dataset.c, ab=!el.classList.contains("open"); el.classList.toggle("open",ab); b.setAttribute("aria-expanded",ab); if(ab) obAbertas.add(c); else obAbertas.delete(c); });
+  $("obList").querySelectorAll("input[data-k]").forEach(inp=>{ inp.onkeydown=e=>{ if(e.key==="Enter") inp.blur(); };
+    inp.onchange=()=>{ const k=inp.dataset.k, t=inp.value.trim(); if(!t) delete O[k]; else { const v=parseValue(t,false); if(!isFinite(v)||v<0){ toast("Valor não entendido. Use só números, ex.: 300,00"); return; } O[k]=Math.round(v*100)/100; } save(); rOrc(); }; });
+}
+$("obSug").onclick=()=>{ const O=orc(), m=selMonth, ms=[m-3,m-2,m-1], Gs=ms.map(obGasto), n=Gs.filter(G=>Object.keys(G).length).length;
+  if(!n){ toast("Ainda não há meses anteriores para calcular a média."); return; }
+  const antes=JSON.parse(JSON.stringify(O)); let k=0;
+  obCats().forEach(c=>{ if(obLimCat(c)!=null) return; const med=Gs.reduce((s,G)=>s+(G["c:"+c]||0),0)/n; if(med>=1){ O["c:"+c]=Math.ceil(med/10)*10; k++; } });
+  save(); rOrc(); toast(k? `${k} ${k===1?"limite sugerido":"limites sugeridos"} pela média de ${n===1?"1 mês":n+" meses"}. Ajuste como quiser.` : "Todas as categorias com gasto já têm limite.", k?[{label:"Desfazer",run:()=>{ state.orc=antes; save(); rOrc(); }}]:[]); };
 
 // ---------------- meus investimentos (digitados à mão) ----------------
 // metas dos investimentos = subcategorias do grupo poupança (fora dívidas). state.alvos = {sub:{alvo, prazo:"AAAA-MM"}}
@@ -1299,7 +1339,7 @@ document.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer?.fil
 
 // ---------------- start ----------------
 (async()=>{
-  const h=location.hash.slice(1); if(["resumo","cartoes","invest","analise","lancamentos","pasta","dados"].includes(h)) tab= h==="pasta"?"dados":h;
+  const h=location.hash.slice(1); if(["resumo","cartoes","orcamento","invest","analise","lancamentos","pasta","dados"].includes(h)) tab= h==="pasta"?"dados":h;
   const ls=lsGet(); state= ls&&ls.versao>=3 ? Object.assign(blank(),ls) : seedState(); applyCfg();
   render();
   if(FS_OK){ const saved=await idbGet("dir");
